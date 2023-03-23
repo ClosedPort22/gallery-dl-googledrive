@@ -1,5 +1,5 @@
 from gallery_dl.extractor.common import Extractor, Message
-from gallery_dl import text, exception
+from gallery_dl import exception
 
 
 BASE_PATTERN = r"(?:https?://)?(?:drive|docs)\.google\.com"
@@ -8,24 +8,26 @@ BASE_PATTERN = r"(?:https?://)?(?:drive|docs)\.google\.com"
 class GoogledriveExtractor(Extractor):
     """Extractor for Google drive files"""
     category = "googledrive"
-    filename_fmt = "{id}"
+    filename_fmt = "{id}.{extension}"
     archive_fmt = "{id}"
     pattern = (BASE_PATTERN + r"/(?:(?:uc|open)\?(?:[\w=&]+&)?id=([\w-]+)|"
                r"(?:file|presentation)/d/([\w-]+))")
     test = (
         ("https://drive.google.com/file/d/0B9P1L--7Wd2vU3VUVlFnbTgtS2c/view", {
-            "pattern": r"^https://doc-\w\w-\w\w-docs\.googleusercontent\.com",
+            "pattern": r"^https://drive\.google\.com/uc\?export=download"
+                       r"&id=0B9P1L--7Wd2vU3VUVlFnbTgtS2c&confirm=t$",
             "content": "69a5a1000f98237efea9231c8a39d05edf013494",
             "keyword": {"id": "0B9P1L--7Wd2vU3VUVlFnbTgtS2c"},
         }),
+        # 404
         ("https://drive.google.com/file/d/foobar/view", {
-            "exception": exception.NotFoundError,
+            "content": "da39a3ee5e6b4b0d3255bfef95601890afd80709",  # empty
         }),
-        # security warning
-        ("https://drive.google.com/file/d/"
-         "1l_5RK28JRL19wpT22B-DY9We3TVXnnQQ/view", {
-             "pattern": r"^https://doc-\w\w-\w\w-docs\.googleusercontent\.com",
-         }),
+        # login required
+        ("https://drive.google.com/file/d/0B9P1L--7Wd2vNm9zMTJWOGxobkU/view", {
+            "exception": exception.AuthorizationError,
+            "content": "da39a3ee5e6b4b0d3255bfef95601890afd80709",  # empty
+        }),
         # quota exceeded
         # ("https://docs.google.com/file/d/0B1MVW1mFO2zmZHVRWEQ3Rkc3SVE/view",{
         #     "exception": exception.GalleryDLException,
@@ -39,6 +41,7 @@ class GoogledriveExtractor(Extractor):
         ("http://drive.google.com/file/d/0B9P1L--7Wd2vNm9zMTJWOGxobkU"),
 
         ("https://docs.google.com/uc?id=1l_5RK28JRL19wpT22B-DY9We3TVXnnQQ"),
+        ("https://docs.google.com/open?id=1l_5RK28JRL19wpT22B-DY9We3TVXnnQQ"),
         ("https://docs.google.com/"
          "uc?export=download&id=1l_5RK28JRL19wpT22B-DY9We3TVXnnQQ"),
         # random parameters
@@ -54,26 +57,21 @@ class GoogledriveExtractor(Extractor):
         self.id = match.group(1) or match.group(2)
 
     def items(self):
-        resp = self.request(
-            "https://drive.google.com/"
-            "uc?export=download&id={}&confirm=t".format(self.id),
-            allow_redirects=False, notfound="file")
-        data = {"id": self.id, "extension": ""}
+        url = ("https://drive.google.com/"
+               "uc?export=download&id={}&confirm=t".format(self.id))
+        data = {"id": self.id, "extension": "", "_http_validate": _validate}
 
-        if "location" in resp.headers:
-            print(resp.headers["location"])
-            yield Message.Directory, data
-            yield Message.Url, resp.headers["location"], data
-            return
+        yield Message.Directory, data
+        yield Message.Url, url, data
 
-        msg = text.extr(resp.text, "<title>", "</title>") or \
-            text.extr(resp.text, 'class="uc-error-caption">', "</p>")
-        if "quota" in msg.lower():
-            msg = ("quota exceeded for anonymous downloads; "
-                   "use cookies to bypass this error")
-        elif not msg:
-            # unforeseen errors
-            self.log.debug(resp.text)
-            msg = "unknown error"
-        raise exception.StopExtraction(
-            "Unable to retrieve download URL: %s", msg)
+
+# delegate checks to the downloader to be able to skip already
+# downloaded files without making any requests
+def _validate(response):
+    if "content-disposition" in response.headers:
+        return True
+    if "x-auto-login" in response.headers:  # redirected to login page
+        raise exception.AuthorizationError()
+    raise exception.StopExtraction(
+        "Quota exceeded for anonymous downloads. "
+        "Use cookies to bypass this error.")
