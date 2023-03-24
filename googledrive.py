@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from gallery_dl.extractor.common import Extractor, Message
 from gallery_dl import exception
 

@@ -4,7 +4,7 @@ Google Drive extractor add-on for
 
 
 ## Usage
-Move `googledrive.py` to your location of choice, and modify `module-sources`
+Move `googledrive.py` to your location of choice and modify `module-sources`
 in `googledrive.conf` accordingly. Then invoke *gallery-dl* with the `-c`
 option:
 
