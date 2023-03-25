@@ -12,6 +12,7 @@ class GoogledriveExtractor(Extractor):
     category = "googledrive"
     filename_fmt = "{id}.{extension}"
     archive_fmt = "{id}"
+    root = "https://drive.google.com"
     pattern = (BASE_PATTERN + r"/(?:(?:uc|open)\?(?:[\w=&]+&)?id=([\w-]+)|"
                r"(?:file|presentation)/d/([\w-]+))")
     test = (
@@ -59,8 +60,8 @@ class GoogledriveExtractor(Extractor):
         self.id = match.group(1) or match.group(2)
 
     def items(self):
-        url = ("https://drive.google.com/"
-               "uc?export=download&id={}&confirm=t".format(self.id))
+        url = "{}/uc?export=download&id={}&confirm=t".format(
+            self.root, self.id)
         data = {"id": self.id, "extension": "", "_http_validate": _validate}
 
         yield Message.Directory, data
