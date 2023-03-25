@@ -8,11 +8,36 @@ BASE_PATTERN = r"(?:https?://)?(?:drive|docs)\.google\.com"
 
 
 class GoogledriveExtractor(Extractor):
-    """Extractor for Google drive files"""
+    """Base class for Google drive extractors"""
     category = "googledrive"
     filename_fmt = "{id}.{extension}"
     archive_fmt = "{id}"
     root = "https://drive.google.com"
+
+    def url_data_from_id(self, id):
+        """Get URL and data from file ID"""
+        url = "{}/uc?export=download&id={}&confirm=t".format(
+            self.root, id)
+        data = {"id": id, "extension": "", "_http_validate": _validate}
+
+        return url, data
+
+
+# delegate checks to the downloader to be able to skip already
+# downloaded files without making any requests
+def _validate(response):
+    if "content-disposition" in response.headers:
+        return True
+    if "x-auto-login" in response.headers:  # redirected to login page
+        raise exception.AuthorizationError()
+    raise exception.StopExtraction(
+        "Quota exceeded for anonymous downloads. "
+        "Use cookies to bypass this error.")
+
+
+class GoogledriveFileExtractor(GoogledriveExtractor):
+    """Extractor for Google drive files"""
+    subcategory = "file"
     pattern = (BASE_PATTERN + r"/(?:(?:uc|open)\?(?:[\w=&]+&)?id=([\w-]+)|"
                r"(?:file|presentation)/d/([\w-]+))")
     test = (
@@ -56,25 +81,11 @@ class GoogledriveExtractor(Extractor):
     )
 
     def __init__(self, match):
-        Extractor.__init__(self, match)
+        GoogledriveExtractor.__init__(self, match)
         self.id = match.group(1) or match.group(2)
 
     def items(self):
-        url = "{}/uc?export=download&id={}&confirm=t".format(
-            self.root, self.id)
-        data = {"id": self.id, "extension": "", "_http_validate": _validate}
+        url, data = self.url_data_from_id(self.id)
 
         yield Message.Directory, data
         yield Message.Url, url, data
-
-
-# delegate checks to the downloader to be able to skip already
-# downloaded files without making any requests
-def _validate(response):
-    if "content-disposition" in response.headers:
-        return True
-    if "x-auto-login" in response.headers:  # redirected to login page
-        raise exception.AuthorizationError()
-    raise exception.StopExtraction(
-        "Quota exceeded for anonymous downloads. "
-        "Use cookies to bypass this error.")
