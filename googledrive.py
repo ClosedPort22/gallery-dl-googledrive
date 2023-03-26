@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from gallery_dl.extractor.common import Extractor, Message
-from gallery_dl import exception
+from gallery_dl import util, text, exception
+from urllib.parse import urlencode
+import re
 
 
 BASE_PATTERN = r"(?:https?://)?(?:drive|docs)\.google\.com"
@@ -89,3 +91,211 @@ class GoogledriveFileExtractor(GoogledriveExtractor):
 
         yield Message.Directory, data
         yield Message.Url, url, data
+
+
+class GoogledriveFolderExtractor(GoogledriveExtractor):
+    """Extractor for Google drive folders"""
+    subcategory = "folder"
+    directory_fmt = ("{category}", "{path[0]:?//}", "{path[1]:?//}",
+                     "{path[2]:?//}", "{path[3:]:J - /}")
+    filename_fmt = "{id}_{filename}.{extension}"
+    pattern = BASE_PATTERN + r"/drive/folders/([\w-]+)"
+    test = (
+        # flat
+        ("https://drive.google.com/drive/folders/"
+         "1dQ4sx0-__Nvg65rxTSgQrl7VyW_FZ9QI", {
+             "pattern": GoogledriveFileExtractor.pattern,
+             "count": 3,
+             "keyword": {
+                 "parent": {"id": "1dQ4sx0-__Nvg65rxTSgQrl7VyW_FZ9QI"},
+                 "path"  : ["1dQ4sx0-__Nvg65rxTSgQrl7VyW_FZ9QI"],
+             }
+         }),
+        # request metadata for base folder
+        ("https://drive.google.com/drive/folders/"
+         "1dQ4sx0-__Nvg65rxTSgQrl7VyW_FZ9QI", {
+             "options": (("metadata", True),),
+             "count": 3,
+             "keyword": {
+                 "parent": {"title": "Forrest"},
+                 "path"  : ["Forrest"],
+             }
+         }),
+        # nested folder
+        ("https://drive.google.com/drive/folders/"
+         "1TMZoSAu4ecs_Q3GEEWfiyrQIPtj3DJAC", {
+             "count": 2,
+             "keyword": {
+                 "date"     : "type:datetime",
+                 "date_created": "type:datetime",
+                 "extension": "txt",
+                 "file_size": int,
+                 "filename" : "file",
+                 "title"    : "file.txt",
+                 "parent"   : dict,
+                 "path"     : list,
+             }
+         }),
+        # more than 50 files
+        ("https://drive.google.com/drive/folders/"
+         "1gd3xLkmjT8IckN6WtMbyFZvLR4exRIkn", {
+             "count": 100,
+         }),
+    )
+
+    FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
+
+    def __init__(self, match):
+        Extractor.__init__(self, match)
+        self.id = match.group(1)
+        self.api = GoogledriveWebAPI(self)
+        self.path = []
+
+    @staticmethod
+    def prepare(file):
+        """Adjust the content of a file or folder object"""
+        file["date"] = text.parse_datetime(
+            file["modifiedDate"], "%Y-%m-%dT%H:%M:%S.%f%z")
+        file["date_created"] = text.parse_datetime(
+            file["createdDate"], "%Y-%m-%dT%H:%M:%S.%f%z")
+
+        if "fileSize" in file:
+            file["file_size"] = text.parse_int(file.pop("fileSize"))
+        if "fileExtension" in file:
+            file["extension"] = ext = file.pop("fileExtension")
+            if file["title"].endswith(ext):
+                file["filename"] = file["title"][:-len(ext)-1]
+            else:
+                file["filename"] = file["title"]
+        file["parents"] = [x["id"] for x in file.get("parents") or ()]
+
+    def metadata(self):
+        if not self.config("metadata", False):
+            return {"id": self.id}
+        data = self.api.folder_info(self.id)
+        self.prepare(data)
+        return data
+
+    def items(self):
+        yield from self.files(self.id, self.metadata())
+
+    def files(self, id, parent_data):
+        """Recursively yield files in a folder"""
+        self.path.append(parent_data.get("title") or parent_data["id"])
+
+        folder_data = {"parent": parent_data, "path": self.path.copy()}
+        yield Message.Directory, folder_data
+
+        for file in self.api.folder_content(id):
+            self.prepare(file)
+            if file["mimeType"] == self.FOLDER_MIME_TYPE:
+                # trust 'orderBy'
+                yield from self.files(file["id"], file)
+                continue
+            url, data = self.url_data_from_id(file["id"])
+            data.update(folder_data)
+            data.update(file)
+
+            yield Message.Url, url, data
+
+        self.path.pop()
+
+
+class GoogledriveWebAPI():
+    """Interface for Google Drive web API"""
+
+    API_KEY = "AIzaSyC1qbk75NzWBvSaDh6KnsjjA9pIrP4lYIE"
+    FIELDS = \
+        ("kind,modifiedDate,modifiedByMeDate,lastViewedByMeDate,fileSize,"
+         "owners(kind,permissionId,id),lastModifyingUser(kind,permissionId,"
+         "id),hasThumbnail,thumbnailVersion,title,id,resourceKey,shared,"
+         "sharedWithMeDate,userPermission(role),explicitlyTrashed,mimeType,"
+         "quotaBytesUsed,copyable,fileExtension,sharingUser(kind,permissionId,"
+         "id),spaces,version,teamDriveId,hasAugmentedPermissions,createdDate,"
+         "trashingUser(kind,permissionId,id),trashedDate,parents(id),"
+         "shortcutDetails(targetId,targetMimeType,targetLookupStatus),"
+         "capabilities(canCopy,canDownload,canEdit,canAddChildren,canDelete,"
+         "canRemoveChildren,canShare,canTrash,canRename,canReadTeamDrive,"
+         "canMoveTeamDriveItem),labels(starred,trashed,restricted,viewed)")
+    QUERY_PARAMS = {
+        "openDrive"    : "true",
+        "syncType"     : 0,
+        "errorRecovery": "false",
+        "supportsTeamDrives": "true",
+        "retryCount"   : 0,
+        "key"          : API_KEY,
+    }
+    OUTER_HEADERS = {
+        'Content-Type': 'text/plain;charset=UTF-8;',
+        'Origin'      : 'https://drive.google.com',
+    }
+    DATA = """--{boundary_marker}
+content-type: application/http
+content-transfer-encoding: binary
+
+GET {path}?{query_params} HTTP/1.1
+
+--{boundary_marker}
+"""
+
+    def __init__(self, extractor):
+        self.request = extractor.request
+        self._find_json = re.compile("(?s)[^{]+(.+})").match
+
+    def folder_content(self, folder_id):
+        """Yield folder content (including subfolders)"""
+        query_str = "trashed = false and '{}' in parents".format(folder_id)
+        return self._pagination("/drive/v2beta/files", query_str)
+
+    def folder_info(self, folder_id):
+        """Return folder info"""
+        params = self.QUERY_PARAMS.copy()
+        # reason 1001
+        params["fields"] = self.FIELDS
+        return self._call("/drive/v2beta/files/{}".format(folder_id), params)
+
+    def _pagination(self, endpoint, query_str):
+        page_token = ""
+        fields = "kind,nextPageToken,items({}),incompleteSearch".format(
+            self.FIELDS)
+        params = self.QUERY_PARAMS.copy()
+        params.update({
+            # "reason"       : 102,
+            "q"            : query_str,
+            "fields"       : fields,
+            "appDataFilter": "NO_APP_DATA",
+            "spaces"       : "drive",
+            "maxResults"   : 50,
+            "includeItemsFromAllDrives": "true",
+            "corpora"      : "default",
+            "orderBy"      : "folder,title_natural asc",
+        })
+        while True:
+            params["pageToken"] = page_token
+            page = self._call(endpoint, params)
+            yield from page["items"]
+            page_token = page.get("nextPageToken")
+            if not page_token:
+                break
+
+    def _call(self, endpoint, params=(), **kwargs):
+        """Call an API endpoint
+
+        This encapsulates the HTTP request (as defined in 'DATA') in the
+        payload of a normal HTTP POST request, which is then sent to
+        https://clients6.google.com/batch/drive/v2beta
+        """
+        boundary_marker = "====={}=====".format(util.generate_token(12))
+        params_str = urlencode(params)  # safe="()'", quote_via=quote
+        data = self.DATA.format(
+            boundary_marker=boundary_marker,
+            path=endpoint, query_params=params_str).encode()
+        outer_params = {
+            "$ct": 'multipart/mixed; boundary="{}"'.format(boundary_marker),
+            "key": self.API_KEY,
+        }
+        resp = self.request(
+            "https://clients6.google.com/batch/drive/v2beta", method="POST",
+            headers=self.OUTER_HEADERS, params=outer_params, data=data,
+            **kwargs)
+        return util.json_loads(self._find_json(resp.text).group(1))
