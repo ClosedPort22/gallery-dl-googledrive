@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+"""Extractors for Google Drive"""
+
 from gallery_dl.extractor.common import Extractor, Message
 from gallery_dl import util, text, exception
 from urllib.parse import urlencode
@@ -10,7 +12,7 @@ BASE_PATTERN = r"(?:https?://)?(?:drive|docs)\.google\.com"
 
 
 class GoogledriveExtractor(Extractor):
-    """Base class for Google drive extractors"""
+    """Base class for Google Drive extractors"""
     category = "googledrive"
     filename_fmt = "{id}.{extension}"
     archive_fmt = "{id}"
@@ -38,7 +40,7 @@ def _validate(response):
 
 
 class GoogledriveFileExtractor(GoogledriveExtractor):
-    """Extractor for Google drive files"""
+    """Extractor for Google Drive files"""
     subcategory = "file"
     pattern = (BASE_PATTERN + r"/(?:(?:uc|open)\?(?:[\w=&]+&)?id=([\w-]+)|"
                r"(?:file|presentation)/d/([\w-]+))")
@@ -94,7 +96,7 @@ class GoogledriveFileExtractor(GoogledriveExtractor):
 
 
 class GoogledriveFolderExtractor(GoogledriveExtractor):
-    """Extractor for Google drive folders"""
+    """Extractor for Google Drive folders"""
     subcategory = "folder"
     directory_fmt = ("{category}", "{path[0]:?//}", "{path[1]:?//}",
                      "{path[2]:?//}", "{path[3:]:J - /}")
@@ -109,7 +111,7 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
              "keyword": {
                  "parent": {"id": "1dQ4sx0-__Nvg65rxTSgQrl7VyW_FZ9QI"},
                  "path"  : ["1dQ4sx0-__Nvg65rxTSgQrl7VyW_FZ9QI"],
-             }
+             },
          }),
         # request metadata for base folder
         ("https://drive.google.com/drive/folders/"
@@ -119,7 +121,7 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
              "keyword": {
                  "parent": {"title": "Forrest"},
                  "path"  : ["Forrest"],
-             }
+             },
          }),
         # nested folder
         ("https://drive.google.com/drive/folders/"
@@ -134,7 +136,7 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
                  "title"    : "file.txt",
                  "parent"   : dict,
                  "path"     : list,
-             }
+             },
          }),
         # more than 50 files
         ("https://drive.google.com/drive/folders/"
@@ -146,7 +148,7 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
     FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
     def __init__(self, match):
-        Extractor.__init__(self, match)
+        GoogledriveExtractor.__init__(self, match)
         self.id = match.group(1)
         self.api = GoogledriveWebAPI(self)
         self.path = []
