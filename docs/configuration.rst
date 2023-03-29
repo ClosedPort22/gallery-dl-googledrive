@@ -1,12 +1,11 @@
 Configuration
 #############
 
-Once loaded, the Google Drive extractors can be configured in the same way as
-built-in extractors. This file lists all available options that are specific
-to said extractors.
 
 For documentation on how to configure *gallery-dl*, see
 `gallery-dl/docs/configuration.rst <https://github.com/mikf/gallery-dl/blob/master/docs/configuration.rst>`__.
+
+See the respective config files for more info.
 
 
 Extractor Options

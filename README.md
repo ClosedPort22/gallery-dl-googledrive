@@ -1,17 +1,19 @@
-# gallery-dl-googledrive
-Google Drive extractor add-on for
-[*gallery-dl*](https://github.com/mikf/gallery-dl)
+# gallery-dl-addons
+Add-ons for [*gallery-dl*](https://github.com/mikf/gallery-dl)
 
 
 ## Usage
-Move `googledrive.py` to your location of choice and modify `module-sources`
-in `googledrive.conf` accordingly. Then invoke *gallery-dl* with the `-c`
+Move the modules to your location of choice and modify `module-sources`
+in the config file accordingly. Then invoke *gallery-dl* with the `-c`
 option:
 
 ```bash
 $ gallery-dl -c googledrive.conf https://drive.google.com/file/d/0B9P1L--7Wd2vU3VUVlFnbTgtS2c/view
 * ./googledrive/0B9P1L--7Wd2vU3VUVlFnbTgtS2c_spam.txt
 ```
+
+Alternatively, you can add the relevant configuration options to your
+main config file and use the add-ons like built-in extractors.
 
 
 ## Inspired By
