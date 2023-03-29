@@ -15,7 +15,7 @@ class MediafireExtractor(Extractor):
     filename_fmt = "{id}.{extension}"
     archive_fmt = "{id}"
     root = "https://www.mediafire.com"
-    pattern = BASE_PATTERN + r"/(?:download(?:\.php\?|/)|file/)([0-9a-z]+)"
+    pattern = BASE_PATTERN + r"/(?:download(?:\.php\?|/)|file/|\?)([0-9a-z]+)"
     test = (
         # direct download
         ("http://www.mediafire.com/file/ise1i57s4dfkgc8", {
@@ -35,6 +35,7 @@ class MediafireExtractor(Extractor):
             "content": "da39a3ee5e6b4b0d3255bfef95601890afd80709",  # empty
         }),
 
+        ("https://www.mediafire.com/?u79eqi2we39k343"),
         ("http://www.mediafire.com/download.php?u79eqi2we39k343"),
     )
 
