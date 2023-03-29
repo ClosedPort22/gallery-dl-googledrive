@@ -20,6 +20,7 @@ main config file and use the add-ons like built-in extractors.
 * [gallery-dl](https://github.com/mikf/gallery-dl)
 * [gdown](https://github.com/wkentaro/gdown)
 * [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+* [mediafire-dl](https://github.com/Juvenal-Yescas/mediafire-dl)
 
 
 ## License
