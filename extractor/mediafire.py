@@ -10,11 +10,40 @@ BASE_PATTERN = r"(?:https?://)?(?:www\.)?mediafire\.com"
 
 
 class MediafireExtractor(Extractor):
-    """Extractor for Mediafire URLs"""
+    """Base class for Mediafire extractors"""
     category = "mediafire"
     filename_fmt = "{id}.{extension}"
     archive_fmt = "{id}"
     root = "https://www.mediafire.com"
+
+    def url_data_from_id(self, id):
+        """Get URL and data from file ID"""
+        url = "{}/download/{}".format(self.root, id)
+        data = {"id": id, "extension": "", "_http_validate": _validate}
+
+        return url, data
+
+
+# delegate url extraction to the downloader to be able to skip already
+# downloaded files without making any requests
+def _validate(response):
+    # direct download
+    if "content-disposition" in response.headers:
+        return True
+    # download response content
+    txt = response.text
+    url = text.extr(txt, "window.location.href", ";").strip(" ='") or \
+        text.extr(text.extr(
+            txt, '<a class="input popsok"', "</a>"), 'href="', '"')
+    if not url:
+        # return True
+        raise exception.StopExtraction("Unable to get download URL")
+    return url
+
+
+class MediafireFileExtractor(MediafireExtractor):
+    """Extractor for Mediafire files"""
+    subcategory = "file"
     pattern = BASE_PATTERN + \
         r"/(?:download(?:\.php\?|/)|file(?:_premium)?/|\?)([0-9a-z]+)"
     test = (
@@ -46,24 +75,7 @@ class MediafireExtractor(Extractor):
         self.id = match.group(1)
 
     def items(self):
-        data = {"id": self.id, "extension": "", "_http_validate": _validate}
+        url, data = self.url_data_from_id(self.id)
 
         yield Message.Directory, data
-        yield Message.Url, "{}/download/{}".format(self.root, self.id), data
-
-
-# delegate url extraction to the downloader to be able to skip already
-# downloaded files without making any requests
-def _validate(response):
-    # direct download
-    if "content-disposition" in response.headers:
-        return True
-    # download response content
-    txt = response.text
-    url = text.extr(txt, "window.location.href", ";").strip(" ='") or \
-        text.extr(text.extr(
-            txt, '<a class="input popsok"', "</a>"), 'href="', '"')
-    if not url:
-        # return True
-        raise exception.StopExtraction("Unable to get download URL")
-    return url
+        yield Message.Url, url, data
