@@ -18,25 +18,25 @@ class GoogledriveExtractor(Extractor):
     archive_fmt = "{id}"
     root = "https://drive.google.com"
 
+    def _validate(self, response):
+        # delegate checks to the downloader to be able to skip already
+        # downloaded files without making any requests
+        if "content-disposition" in response.headers:
+            return True
+        if "x-auto-login" in response.headers:  # redirected to login page
+            raise exception.AuthorizationError()
+        self.log.warning(
+            "Quota exceeded for anonymous downloads. "
+            "Use cookies to bypass this error.")
+        return False
+
     def url_data_from_id(self, id):
         """Get URL and data from file ID"""
         url = "{}/uc?export=download&id={}&confirm=t".format(
             self.root, id)
-        data = {"id": id, "extension": "", "_http_validate": _validate}
+        data = {"id": id, "extension": "", "_http_validate": self._validate}
 
         return url, data
-
-
-# delegate checks to the downloader to be able to skip already
-# downloaded files without making any requests
-def _validate(response):
-    if "content-disposition" in response.headers:
-        return True
-    if "x-auto-login" in response.headers:  # redirected to login page
-        raise exception.AuthorizationError()
-    raise exception.StopExtraction(
-        "Quota exceeded for anonymous downloads. "
-        "Use cookies to bypass this error.")
 
 
 class GoogledriveFileExtractor(GoogledriveExtractor):
@@ -60,9 +60,9 @@ class GoogledriveFileExtractor(GoogledriveExtractor):
             "exception": exception.AuthorizationError,
             "content": "da39a3ee5e6b4b0d3255bfef95601890afd80709",  # empty
         }),
-        # quota exceeded
+        # quota exceeded (big file!)
         # ("https://docs.google.com/file/d/0B1MVW1mFO2zmZHVRWEQ3Rkc3SVE/view",{
-        #     "exception": exception.GalleryDLException,
+        #     "content": "da39a3ee5e6b4b0d3255bfef95601890afd80709",  # empty
         # }),
 
         ("https://drive.google.com/file/d/"

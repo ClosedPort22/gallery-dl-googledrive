@@ -36,10 +36,9 @@ def _validate(response):
     url = text.extr(txt, "window.location.href", ";").strip(" ='") or \
         text.extr(text.extr(
             txt, '<a class="input popsok"', "</a>"), 'href="', '"')
-    if not url:
-        # return True
-        raise exception.StopExtraction("Unable to get download URL")
-    return url
+    if url:
+        return url
+    return False  # return True to save response as file
 
 
 class MediafireFileExtractor(MediafireExtractor):
