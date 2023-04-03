@@ -131,7 +131,7 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
                  "date"     : "type:datetime",
                  "date_created": "type:datetime",
                  "extension": "txt",
-                 "file_size": int,
+                 "filesize" : int,
                  "filename" : "file",
                  "title"    : "file.txt",
                  "parent"   : dict,
@@ -162,7 +162,7 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
             file["createdDate"], "%Y-%m-%dT%H:%M:%S.%f%z")
 
         if "fileSize" in file:
-            file["file_size"] = text.parse_int(file.pop("fileSize"))
+            file["filesize"] = text.parse_int(file.pop("fileSize"))
         if "fileExtension" in file:
             file["extension"] = ext = file.pop("fileExtension")
             if file["title"].endswith(ext):
