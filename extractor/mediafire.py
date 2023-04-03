@@ -12,14 +12,14 @@ BASE_PATTERN = r"(?:https?://)?(?:www\.)?mediafire\.com"
 class MediafireExtractor(Extractor):
     """Base class for Mediafire extractors"""
     category = "mediafire"
-    filename_fmt = "{id}.{extension}"
-    archive_fmt = "{id}"
+    filename_fmt = "{quickkey}.{extension}"
+    archive_fmt = "{quickkey}"
     root = "https://www.mediafire.com"
 
     def url_data_from_id(self, id):
         """Get URL and data from file ID"""
         url = "{}/download/{}".format(self.root, id)
-        data = {"id": id, "extension": "", "_http_validate": _validate}
+        data = {"quickkey": id, "extension": "", "_http_validate": _validate}
 
         return url, data
 
@@ -51,7 +51,7 @@ class MediafireFileExtractor(MediafireExtractor):
         ("http://www.mediafire.com/file/ise1i57s4dfkgc8", {
             "count": 1,
             "pattern": r"^https://www\.mediafire\.com/download/",
-            "keyword": {"id": "ise1i57s4dfkgc8", "extension": ""},
+            "keyword": {"quickkey": "ise1i57s4dfkgc8", "extension": ""},
         }),
         # redirects to webpage
         ("https://www.mediafire.com/download/kt9z2284k2sg8ay", {
