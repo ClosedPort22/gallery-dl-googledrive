@@ -4,6 +4,7 @@
 
 from gallery_dl.extractor.common import Extractor, Message
 from gallery_dl import text, exception
+import itertools
 
 
 BASE_PATTERN = r"(?:https?://)?(?:www\.)?mediafire\.com"
@@ -112,7 +113,7 @@ class MediafireFolderExtractor(MediafireExtractor):
         }),
         # nested folder
         ("https://www.mediafire.com/folder/9a6a91cgbd7m8", {
-            "count": 36
+            "count": 36,
         }),
         # prefer native URL
         ("https://www.mediafire.com/folder/ka4p1kju36qcq/Newgen+Faces", {
@@ -161,9 +162,10 @@ class MediafireFolderExtractor(MediafireExtractor):
             data.update(file)
 
             try:
-                yield Message.Url, data["links"]["normal_download"], data
+                native_url = data["links"]["normal_download"]
             except KeyError:
-                yield Message.Url, url, data
+                native_url = ""
+            yield Message.Url, native_url or url, data
 
         for folder in self.api.folder_content(id, "folders"):
             self.prepare(folder)
@@ -206,7 +208,7 @@ class MediafireWebAPI():
 
     def _pagination(self, endpoint, key1, key2, params):
         params.update(self.PAGINATION_PARAMS)
-        for cn in range(1):
+        for cn in itertools.count(1):
             params["chunk"] = cn
             chunk = self._call(endpoint, params)
             yield from chunk[key1][key2]
