@@ -79,3 +79,143 @@ class MediafireFileExtractor(MediafireExtractor):
 
         yield Message.Directory, data
         yield Message.Url, url, data
+
+
+class MediafireFolderExtractor(MediafireExtractor):
+    """Extractor for Mediafire folders"""
+    subcategory = "folder"
+    directory_fmt = ("{category}", "{path[0]:?//}", "{path[1]:?//}",
+                     "{path[2]:?//}", "{path[3:]:J - /}")
+    filename_fmt = "{quickkey}_{filename}.{extension}"
+    pattern = BASE_PATTERN + r"/folder/([0-9a-z]+)"
+    test = (
+        # flat
+        ("https://www.mediafire.com/folder/w396pruckzoxt", {
+            "pattern": MediafireFileExtractor.pattern,
+            "count": 2,
+            "keyword": {
+                "date"     : "type:datetime",
+                "extension": "pdf",
+                "filename" : "re:^LIHKG_",
+                "filesize" : int,
+                "path"     : list,
+            },
+        }),
+        # request metadata for base folder
+        ("https://www.mediafire.com/folder/w1sa3pkoo1we2", {
+            "options": (("metadata", True),),
+            "count": 6,
+            "keyword": {
+                "parent": {"name": "Johnny Reb III"},
+                "path"  : ["Johnny Reb III"],
+            },
+        }),
+        # nested folder
+        ("https://www.mediafire.com/folder/9a6a91cgbd7m8", {
+            "count": 36
+        }),
+        # prefer native URL
+        ("https://www.mediafire.com/folder/ka4p1kju36qcq/Newgen+Faces", {
+            "pattern": "/file_premium/",
+            "count": ">= 1",
+        }),
+    )
+
+    def __init__(self, match):
+        MediafireExtractor.__init__(self, match)
+        self.id = match.group(1)
+        self.api = MediafireWebAPI(self)
+        self.path = []
+
+    @staticmethod
+    def prepare(file):
+        """Adjust the content of a file or folder object"""
+        file["date"] = text.parse_datetime(
+            file["created_utc"], "%Y-%m-%dT%H:%M:%S%z")
+        if "filename" in file:
+            text.nameext_from_url(file["filename"], file)
+        if "size" in file:
+            file["filesize"] = text.parse_int(file.pop("size"))
+
+    def metadata(self):
+        if not self.config("metadata", False):
+            return {"folderkey": self.id}
+        data = self.api.folder_info(self.id)
+        self.prepare(data)
+        return data
+
+    def items(self):
+        yield from self.files(self.id, self.metadata())
+
+    def files(self, id, parent_data):
+        """Recursively yield files in a folder"""
+        self.path.append(parent_data.get("name") or parent_data["folderkey"])
+
+        folder_data = {"parent": parent_data, "path": self.path.copy()}
+        yield Message.Directory, folder_data
+
+        for file in self.api.folder_content(id, "files"):
+            self.prepare(file)
+            url, data = self.url_data_from_id(file["quickkey"])
+            data.update(folder_data)
+            data.update(file)
+
+            try:
+                yield Message.Url, data["links"]["normal_download"], data
+            except KeyError:
+                yield Message.Url, url, data
+
+        for folder in self.api.folder_content(id, "folders"):
+            self.prepare(folder)
+            yield from self.files(folder["folderkey"], folder)
+
+        self.path.pop()
+
+
+class MediafireWebAPI():
+    """Interface for Mediafire web API"""
+
+    PAGINATION_PARAMS = {
+        "filter"  : "all",
+        "order_by": "name",
+        "order_direction": "asc",
+        "version" : "1.5",
+    }
+
+    def __init__(self, extractor):
+        self.request = extractor.request
+
+    def folder_info(self, folder_key, recursive=True, details=True):
+        """Return folder info"""
+        if not isinstance(folder_key, str):
+            # assume iterable
+            folder_key = ",".join(folder_key)
+        params = {
+            "recursive" : "yes" if recursive else "no",
+            "details"   : "yes" if details else "no",
+            "folder_key": folder_key,
+        }
+        response = self._call("/folder/get_info.php", params, method="POST")
+        return response.get("folder_info") or response["folder_infos"]
+
+    def folder_content(self, folder_key, content_type):
+        """Yield folder content (files or subfolders)"""
+        return self._pagination(
+            "/folder/get_content.php", "folder_content", content_type,
+            {"content_type": content_type, "folder_key": folder_key})
+
+    def _pagination(self, endpoint, key1, key2, params):
+        params.update(self.PAGINATION_PARAMS)
+        for cn in range(1):
+            params["chunk"] = cn
+            chunk = self._call(endpoint, params)
+            yield from chunk[key1][key2]
+            more = chunk[key1].get("more_chunks")
+            if more == "no" or not more:
+                break
+
+    def _call(self, endpoint, params, **kwargs):
+        """Call an API endpoint"""
+        params["response_format"] = "json"
+        url = "https://www.mediafire.com/api/1.4" + endpoint
+        return self.request(url, params=params, **kwargs).json()["response"]

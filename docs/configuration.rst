@@ -21,3 +21,14 @@ Default
 Description
     Fetch metadata for the base folder. If ``false``, the ``id`` of the folder
     is used in place of its name.
+
+
+extractor.mediafire.folder.metadata
+-----------------------------------
+Type
+    ``bool``
+Default
+    ``false``
+Description
+    Fetch metadata for the base folder. If ``false``, the ``folderkey`` of the
+    folder is used in place of its name.
