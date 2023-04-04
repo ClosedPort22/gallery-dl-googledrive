@@ -119,6 +119,15 @@ class MediafireFolderExtractor(MediafireExtractor):
             "pattern": "/file_premium/",
             "count": ">= 1",
         }),
+
+        # not found (400 Bad Request)
+        ("https://www.mediafire.com/folder/foobar123456789", {
+            "options": (("metadata", True),),
+            "exception": exception.HttpError,
+        }),
+        ("https://www.mediafire.com/folder/foobar123456789", {
+            "exception": exception.HttpError,
+        }),
     )
 
     def __init__(self, match):

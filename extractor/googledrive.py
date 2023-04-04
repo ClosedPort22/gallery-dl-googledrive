@@ -143,6 +143,17 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
          "1gd3xLkmjT8IckN6WtMbyFZvLR4exRIkn", {
              "count": 100,
          }),
+
+        # 404
+        ("https://drive.google.com/drive/folders/"
+         "foobarkmjT8IckN6WtMbyFZvLR4exRIkn", {
+             "options": (("metadata", True),),
+             "exception": exception.NotFoundError,
+         }),
+        ("https://drive.google.com/drive/folders/"
+         "foobarkmjT8IckN6WtMbyFZvLR4exRIkn", {
+             "exception": exception.NotFoundError,
+         }),
     )
 
     FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
@@ -300,4 +311,11 @@ GET {path}?{query_params} HTTP/1.1
             "https://clients6.google.com/batch/drive/v2beta", method="POST",
             headers=self.OUTER_HEADERS, params=outer_params, data=data,
             **kwargs)
-        return util.json_loads(self._find_json(resp.text).group(1))
+        data = util.json_loads(self._find_json(resp.text).group(1))
+        if "error" not in data:
+            return data
+        error = data["error"]
+        if error["code"] == 404:
+            raise exception.NotFoundError("file or folder")
+        raise exception.StopExtraction("Unexpected API response (%s: %s)",
+                                       error["code"], error["message"])
