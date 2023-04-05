@@ -32,13 +32,11 @@ def _validate(response):
     if "content-disposition" in response.headers:
         return True
     # download response content
-    txt = response.text
-    url = text.extr(txt, "window.location.href", ";").strip(" ='") or \
-        text.extr(text.extr(
-            txt, '<a class="input popsok"', "</a>"), 'href="', '"')
-    if url:
-        return url
-    return False  # return True to save response as file
+    extr = text.extract_from(response.text)
+    # return True to save response as file
+    return extr("window.location.href", ";").strip(" ='") or \
+        text.extr(extr('<a class="input popsok"', "</a>"), 'href="', '"') or \
+        False
 
 
 class MediafireFileExtractor(MediafireExtractor):
@@ -185,6 +183,8 @@ class MediafireFolderExtractor(MediafireExtractor):
 class MediafireWebAPI():
     """Interface for Mediafire web API"""
 
+    API_ROOT = "https://www.mediafire.com/api/1.4"
+
     PAGINATION_PARAMS = {
         "filter"  : "all",
         "order_by": "name",
@@ -227,5 +227,5 @@ class MediafireWebAPI():
     def _call(self, endpoint, params, **kwargs):
         """Call an API endpoint"""
         params["response_format"] = "json"
-        url = "https://www.mediafire.com/api/1.4" + endpoint
-        return self.request(url, params=params, **kwargs).json()["response"]
+        return self.request(self.API_ROOT + endpoint, params=params,
+                            **kwargs).json()["response"]
