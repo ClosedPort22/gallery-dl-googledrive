@@ -19,7 +19,7 @@ class MediafireExtractor(Extractor):
 
     def url_data_from_id(self, id):
         """Get URL and data from file ID"""
-        url = "{}/download/{}".format(self.root, id)
+        url = self.root + "/?" + id
         data = {"quickkey": id, "extension": "", "_http_validate": _validate}
 
         return url, data
