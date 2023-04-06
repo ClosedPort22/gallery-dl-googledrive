@@ -101,7 +101,7 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
     directory_fmt = ("{category}", "{path[0]:?//}", "{path[1]:?//}",
                      "{path[2]:?//}", "{path[3:]:J - /}")
     filename_fmt = "{id}_{filename}.{extension}"
-    pattern = BASE_PATTERN + r"/drive/folders/([\w-]+)"
+    pattern = BASE_PATTERN + r"/drive/(?:mobile/)?folders/([\w-]+)"
     test = (
         # flat
         ("https://drive.google.com/drive/folders/"
@@ -154,6 +154,9 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
          "foobarkmjT8IckN6WtMbyFZvLR4exRIkn", {
              "exception": exception.NotFoundError,
          }),
+
+        ("https://drive.google.com/drive/mobile/folders/"
+         "1gd3xLkmjT8IckN6WtMbyFZvLR4exRIkn"),
     )
 
     FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
