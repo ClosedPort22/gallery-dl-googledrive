@@ -42,3 +42,13 @@ Default
 Description
     Fetch metadata for the base folder. This requires 1 additional API request.
     If ``false``, the ``folderkey`` of the folder is used in place of its name.
+
+
+extractor.mediafire.file.metadata
+---------------------------------
+Type
+    ``bool``
+Default
+    ``false``
+Description
+    Fetch metadata for the file. This requires 1 API request per file.

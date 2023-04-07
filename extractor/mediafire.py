@@ -17,6 +17,16 @@ class MediafireExtractor(Extractor):
     archive_fmt = "{quickkey}"
     root = "https://www.mediafire.com"
 
+    @staticmethod
+    def prepare(file):
+        """Adjust the content of a file or folder object"""
+        file["date"] = text.parse_datetime(
+            file["created_utc"], "%Y-%m-%dT%H:%M:%S%z")
+        if "filename" in file:
+            text.nameext_from_url(file["filename"], file)
+        if "size" in file:
+            file["filesize"] = text.parse_int(file.pop("size"))
+
     def url_data_from_id(self, id):
         """Get URL and data from file ID"""
         url = self.root + "/?" + id
@@ -51,6 +61,17 @@ class MediafireFileExtractor(MediafireExtractor):
             "pattern": r"^https://www\.mediafire\.com/download/",
             "keyword": {"quickkey": "ise1i57s4dfkgc8", "extension": ""},
         }),
+        # request metadata for file
+        ("http://www.mediafire.com/file/ise1i57s4dfkgc8", {
+            "options": (("metadata", True),),
+            "pattern": "/file_premium/",
+            "keyword": {
+                "date"     : "type:datetime",
+                "extension": "zip",
+                "filename" : "AccountEdge_NE_v13",
+                "filesize" : int,
+            },
+        }),
         # redirects to webpage
         ("https://www.mediafire.com/download/kt9z2284k2sg8ay", {
             "count": 1,
@@ -71,12 +92,28 @@ class MediafireFileExtractor(MediafireExtractor):
     def __init__(self, match):
         Extractor.__init__(self, match)
         self.id = match.group(1)
+        if self.config("metadata", False):
+            self.api = MediafireWebAPI(self)
+        else:
+            self.api = None
+
+    def metadata(self):
+        if not self.api:
+            return ()
+        data = self.api.file_info(self.id)
+        self.prepare(data)
+        return data
 
     def items(self):
         url, data = self.url_data_from_id(self.id)
+        data.update(self.metadata())
 
         yield Message.Directory, data
-        yield Message.Url, url, data
+        try:
+            native_url = data["links"]["normal_download"]
+        except KeyError:
+            native_url = ""
+        yield Message.Url, native_url or url, data
 
 
 class MediafireFolderExtractor(MediafireExtractor):
@@ -135,16 +172,6 @@ class MediafireFolderExtractor(MediafireExtractor):
         self.id = match.group(1)
         self.api = MediafireWebAPI(self)
         self.path = []
-
-    @staticmethod
-    def prepare(file):
-        """Adjust the content of a file or folder object"""
-        file["date"] = text.parse_datetime(
-            file["created_utc"], "%Y-%m-%dT%H:%M:%S%z")
-        if "filename" in file:
-            text.nameext_from_url(file["filename"], file)
-        if "size" in file:
-            file["filesize"] = text.parse_int(file.pop("size"))
 
     def metadata(self):
         if not self.config("metadata", False):
@@ -209,6 +236,11 @@ class MediafireWebAPI():
         }
         response = self._call("/folder/get_info.php", params, method="POST")
         return response.get("folder_info") or response["folder_infos"]
+
+    def file_info(self, file_key):
+        """Return file info"""
+        return self._call(
+            "/file/get_info.php", {"quick_key": file_key})["file_info"]
 
     def folder_content(self, folder_key, content_type):
         """Yield folder content (files or subfolders)"""
