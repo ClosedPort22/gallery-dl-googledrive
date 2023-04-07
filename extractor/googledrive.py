@@ -290,8 +290,20 @@ GET {path}?{query_params} HTTP/1.1
 
     def folder_content(self, folder_id):
         """Yield folder content (including subfolders)"""
-        query_str = "trashed = false and '{}' in parents".format(folder_id)
-        return self._pagination("/drive/v2beta/files", query_str)
+        params = self.QUERY_PARAMS.copy()
+        params.update({
+            # "reason"       : 102,
+            "q": "trashed = false and '{}' in parents".format(folder_id),
+            "fields": "kind,nextPageToken,items({}),incompleteSearch".format(
+                self.FOLDER_FIELDS),
+            "appDataFilter": "NO_APP_DATA",
+            "spaces"       : "drive",
+            "maxResults"   : 50,
+            "includeItemsFromAllDrives": "true",
+            "corpora"      : "default",
+            "orderBy"      : "folder,title_natural asc",
+        })
+        return self._pagination("/drive/v2beta/files", params)
 
     def folder_info(self, folder_id):
         """Return folder info"""
@@ -305,22 +317,8 @@ GET {path}?{query_params} HTTP/1.1
         params = {"fields": self.FILE_FIELDS, "enforceSingleParent": "true"}
         return self._call("/drive/v2beta/files/{}".format(file_id), params)
 
-    def _pagination(self, endpoint, query_str):
+    def _pagination(self, endpoint, params):
         page_token = ""
-        fields = "kind,nextPageToken,items({}),incompleteSearch".format(
-            self.FOLDER_FIELDS)
-        params = self.QUERY_PARAMS.copy()
-        params.update({
-            # "reason"       : 102,
-            "q"            : query_str,
-            "fields"       : fields,
-            "appDataFilter": "NO_APP_DATA",
-            "spaces"       : "drive",
-            "maxResults"   : 50,
-            "includeItemsFromAllDrives": "true",
-            "corpora"      : "default",
-            "orderBy"      : "folder,title_natural asc",
-        })
         while True:
             params["pageToken"] = page_token
             page = self._call(endpoint, params)
