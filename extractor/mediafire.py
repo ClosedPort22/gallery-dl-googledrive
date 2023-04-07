@@ -43,7 +43,7 @@ class MediafireFileExtractor(MediafireExtractor):
     """Extractor for Mediafire files"""
     subcategory = "file"
     pattern = BASE_PATTERN + \
-        r"/(?:download(?:\.php\?|/)|file(?:_premium)?/|\?)([0-9a-z]+)"
+        r"/(?:download(?:\.php\?|/)|file(?:_premium)?/|\?)([0-9a-z]{15})"
     test = (
         # direct download
         ("http://www.mediafire.com/file/ise1i57s4dfkgc8", {
@@ -85,7 +85,7 @@ class MediafireFolderExtractor(MediafireExtractor):
     directory_fmt = ("{category}", "{path[0]:?//}", "{path[1]:?//}",
                      "{path[2]:?//}", "{path[3:]:J - /}")
     filename_fmt = "{quickkey}_{filename}.{extension}"
-    pattern = BASE_PATTERN + r"/folder/([0-9a-z]+)"
+    pattern = BASE_PATTERN + r"/(?:folder/|\?)([0-9a-z]{13})"
     test = (
         # flat
         ("https://www.mediafire.com/folder/w396pruckzoxt", {
@@ -118,12 +118,14 @@ class MediafireFolderExtractor(MediafireExtractor):
             "count": ">= 1",
         }),
 
+        ("https://www.mediafire.com/?9a6a91cgbd7m8"),
+
         # not found (400 Bad Request)
-        ("https://www.mediafire.com/folder/foobar123456789", {
+        ("https://www.mediafire.com/folder/foobar1234567", {
             "options": (("metadata", True),),
             "exception": exception.HttpError,
         }),
-        ("https://www.mediafire.com/folder/foobar123456789", {
+        ("https://www.mediafire.com/folder/foobar1234567", {
             "exception": exception.HttpError,
         }),
     )
