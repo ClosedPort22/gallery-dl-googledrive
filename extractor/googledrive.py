@@ -301,7 +301,7 @@ GET {path}?{query_params} HTTP/1.1
         payload of a normal HTTP POST request, which is then sent to
         https://clients6.google.com/batch/drive/v2beta
         """
-        boundary_marker = "====={}=====".format(util.generate_token(12))
+        boundary_marker = "====={}=====".format(util.generate_token(6))
         params_str = urlencode(params)  # safe="()'", quote_via=quote
         data = self.DATA.format(
             boundary_marker=boundary_marker,
