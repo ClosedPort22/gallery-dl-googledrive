@@ -18,6 +18,24 @@ class GoogledriveExtractor(Extractor):
     archive_fmt = "{id}"
     root = "https://drive.google.com"
 
+    @staticmethod
+    def prepare(file):
+        """Adjust the content of a file or folder object"""
+        file["date"] = text.parse_datetime(
+            file["modifiedDate"], "%Y-%m-%dT%H:%M:%S.%f%z")
+        file["date_created"] = text.parse_datetime(
+            file["createdDate"], "%Y-%m-%dT%H:%M:%S.%f%z")
+
+        if "fileSize" in file:
+            file["filesize"] = text.parse_int(file.pop("fileSize"))
+        if "fileExtension" in file:
+            file["extension"] = ext = file.pop("fileExtension")
+            if file["title"].endswith(ext):
+                file["filename"] = file["title"][:-len(ext)-1]
+            else:
+                file["filename"] = file["title"]
+        file["parents"] = [x["id"] for x in file.get("parents") or ()]
+
     def _validate(self, response):
         # delegate checks to the downloader to be able to skip already
         # downloaded files without making any requests
@@ -50,6 +68,15 @@ class GoogledriveFileExtractor(GoogledriveExtractor):
                        r"&id=0B9P1L--7Wd2vU3VUVlFnbTgtS2c&confirm=t$",
             "content": "69a5a1000f98237efea9231c8a39d05edf013494",
             "keyword": {"id": "0B9P1L--7Wd2vU3VUVlFnbTgtS2c"},
+        }),
+        # request metadata for file
+        ("https://drive.google.com/file/d/0B9P1L--7Wd2vU3VUVlFnbTgtS2c/view", {
+            "options": (("metadata", True),),
+            "keyword": {
+                "date"     : "type:datetime",
+                "date_created": "type:datetime",
+                "filesize" : int,
+            },
         }),
         # 404
         ("https://drive.google.com/file/d/foobar/view", {
@@ -87,9 +114,21 @@ class GoogledriveFileExtractor(GoogledriveExtractor):
     def __init__(self, match):
         GoogledriveExtractor.__init__(self, match)
         self.id = match.group(1) or match.group(2)
+        if self.config("metadata", False):
+            self.api = GoogledriveWebAPI(self)
+        else:
+            self.api = None
+
+    def metadata(self):
+        if not self.api:
+            return ()
+        data = self.api.file_info(self.id)
+        self.prepare(data)
+        return data
 
     def items(self):
         url, data = self.url_data_from_id(self.id)
+        data.update(self.metadata())
 
         yield Message.Directory, data
         yield Message.Url, url, data
@@ -167,24 +206,6 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
         self.api = GoogledriveWebAPI(self)
         self.path = []
 
-    @staticmethod
-    def prepare(file):
-        """Adjust the content of a file or folder object"""
-        file["date"] = text.parse_datetime(
-            file["modifiedDate"], "%Y-%m-%dT%H:%M:%S.%f%z")
-        file["date_created"] = text.parse_datetime(
-            file["createdDate"], "%Y-%m-%dT%H:%M:%S.%f%z")
-
-        if "fileSize" in file:
-            file["filesize"] = text.parse_int(file.pop("fileSize"))
-        if "fileExtension" in file:
-            file["extension"] = ext = file.pop("fileExtension")
-            if file["title"].endswith(ext):
-                file["filename"] = file["title"][:-len(ext)-1]
-            else:
-                file["filename"] = file["title"]
-        file["parents"] = [x["id"] for x in file.get("parents") or ()]
-
     def metadata(self):
         if not self.config("metadata", False):
             return {"id": self.id}
@@ -221,7 +242,7 @@ class GoogledriveWebAPI():
     """Interface for Google Drive web API"""
 
     API_KEY = "AIzaSyC1qbk75NzWBvSaDh6KnsjjA9pIrP4lYIE"
-    FIELDS = \
+    FOLDER_FIELDS = \
         ("kind,modifiedDate,modifiedByMeDate,lastViewedByMeDate,fileSize,"
          "owners(kind,permissionId,id),lastModifyingUser(kind,permissionId,"
          "id),hasThumbnail,thumbnailVersion,title,id,resourceKey,shared,"
@@ -233,6 +254,17 @@ class GoogledriveWebAPI():
          "capabilities(canCopy,canDownload,canEdit,canAddChildren,canDelete,"
          "canRemoveChildren,canShare,canTrash,canRename,canReadTeamDrive,"
          "canMoveTeamDriveItem),labels(starred,trashed,restricted,viewed)")
+    FILE_FIELDS = \
+        ("alternateLink,copyRequiresWriterPermission,createdDate,description,"
+         "driveId,fileSize,iconLink,id,labels(starred, trashed),"
+         "lastViewedByMeDate,modifiedDate,shared,teamDriveId,userPermission"
+         "(id,name,emailAddress,domain,role,additionalRoles,photoLink,type,"
+         "withLink),permissions(id,name,emailAddress,domain,role,"
+         "additionalRoles,photoLink,type,withLink),parents(id),capabilities"
+         "(canMoveItemWithinDrive,canMoveItemOutOfDrive,"
+         "canMoveItemOutOfTeamDrive,canAddChildren,canEdit,canDownload,"
+         "canComment,canMoveChildrenWithinDrive,canRename,canRemoveChildren,"
+         "canMoveItemIntoTeamDrive),kind")
     QUERY_PARAMS = {
         "openDrive"    : "true",
         "syncType"     : 0,
@@ -265,13 +297,18 @@ GET {path}?{query_params} HTTP/1.1
         """Return folder info"""
         params = self.QUERY_PARAMS.copy()
         # reason 1001
-        params["fields"] = self.FIELDS
+        params["fields"] = self.FOLDER_FIELDS
         return self._call("/drive/v2beta/files/{}".format(folder_id), params)
+
+    def file_info(self, file_id):
+        """Return file info"""
+        params = {"fields": self.FILE_FIELDS, "enforceSingleParent": "true"}
+        return self._call("/drive/v2beta/files/{}".format(file_id), params)
 
     def _pagination(self, endpoint, query_str):
         page_token = ""
         fields = "kind,nextPageToken,items({}),incompleteSearch".format(
-            self.FIELDS)
+            self.FOLDER_FIELDS)
         params = self.QUERY_PARAMS.copy()
         params.update({
             # "reason"       : 102,

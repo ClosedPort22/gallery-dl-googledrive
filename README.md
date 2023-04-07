@@ -23,6 +23,7 @@ main config file and use the add-ons like built-in extractors.
 * [OpenDirectoryDownloader](https://github.com/KoalaBear84/OpenDirectoryDownloader)
 * [mediafire-dl](https://github.com/Juvenal-Yescas/mediafire-dl)
 * [PatreonDownloader](https://github.com/Foxite/PatreonDownloader)
+* [xeuledoc](https://github.com/Malfrats/xeuledoc)
 
 
 ## License

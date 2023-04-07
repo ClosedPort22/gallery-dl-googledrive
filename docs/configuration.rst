@@ -23,6 +23,16 @@ Description
     is used in place of its name.
 
 
+extractor.googledrive.file.metadata
+-----------------------------------
+Type
+    ``bool``
+Default
+    ``false``
+Description
+    Fetch metadata for the file.
+
+
 extractor.mediafire.folder.metadata
 -----------------------------------
 Type
