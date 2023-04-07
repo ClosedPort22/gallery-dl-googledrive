@@ -19,8 +19,8 @@ Type
 Default
     ``false``
 Description
-    Fetch metadata for the base folder. If ``false``, the ``id`` of the folder
-    is used in place of its name.
+    Fetch metadata for the base folder. This requires 1 additional API request.
+    If ``false``, the ``id`` of the folder is used in place of its name.
 
 
 extractor.googledrive.file.metadata
@@ -30,7 +30,7 @@ Type
 Default
     ``false``
 Description
-    Fetch metadata for the file.
+    Fetch metadata for the file. This requires 1 API request per file.
 
 
 extractor.mediafire.folder.metadata
@@ -40,5 +40,5 @@ Type
 Default
     ``false``
 Description
-    Fetch metadata for the base folder. If ``false``, the ``folderkey`` of the
-    folder is used in place of its name.
+    Fetch metadata for the base folder. This requires 1 additional API request.
+    If ``false``, the ``folderkey`` of the folder is used in place of its name.
