@@ -75,7 +75,10 @@ class GoogledriveFileExtractor(GoogledriveExtractor):
             "keyword": {
                 "date"     : "type:datetime",
                 "date_created": "type:datetime",
+                "extension": "txt",
                 "filesize" : int,
+                "filename" : "spam",
+                "title"    : "spam.txt",
             },
         }),
         # 404
@@ -242,29 +245,25 @@ class GoogledriveWebAPI():
     """Interface for Google Drive web API"""
 
     API_KEY = "AIzaSyC1qbk75NzWBvSaDh6KnsjjA9pIrP4lYIE"
-    FOLDER_FIELDS = \
+    FIELDS = \
         ("kind,modifiedDate,modifiedByMeDate,lastViewedByMeDate,fileSize,"
          "owners(kind,permissionId,id),lastModifyingUser(kind,permissionId,"
          "id),hasThumbnail,thumbnailVersion,title,id,resourceKey,shared,"
-         "sharedWithMeDate,userPermission(role),explicitlyTrashed,mimeType,"
-         "quotaBytesUsed,copyable,fileExtension,sharingUser(kind,permissionId,"
-         "id),spaces,version,teamDriveId,hasAugmentedPermissions,createdDate,"
-         "trashingUser(kind,permissionId,id),trashedDate,parents(id),"
-         "shortcutDetails(targetId,targetMimeType,targetLookupStatus),"
-         "capabilities(canCopy,canDownload,canEdit,canAddChildren,canDelete,"
-         "canRemoveChildren,canShare,canTrash,canRename,canReadTeamDrive,"
-         "canMoveTeamDriveItem),labels(starred,trashed,restricted,viewed)")
-    FILE_FIELDS = \
-        ("alternateLink,copyRequiresWriterPermission,createdDate,description,"
-         "driveId,fileSize,iconLink,id,labels(starred, trashed),"
-         "lastViewedByMeDate,modifiedDate,shared,teamDriveId,userPermission"
-         "(id,name,emailAddress,domain,role,additionalRoles,photoLink,type,"
-         "withLink),permissions(id,name,emailAddress,domain,role,"
-         "additionalRoles,photoLink,type,withLink),parents(id),capabilities"
-         "(canMoveItemWithinDrive,canMoveItemOutOfDrive,"
-         "canMoveItemOutOfTeamDrive,canAddChildren,canEdit,canDownload,"
-         "canComment,canMoveChildrenWithinDrive,canRename,canRemoveChildren,"
-         "canMoveItemIntoTeamDrive),kind")
+         "sharedWithMeDate,userPermission(id,name,emailAddress,domain,role,"
+         "additionalRoles,photoLink,type,withLink),permissions(id,name,"
+         "emailAddress,domain,role,additionalRoles,photoLink,type,withLink),"
+         "explicitlyTrashed,mimeType,quotaBytesUsed,copyable,fileExtension,"
+         "sharingUser(kind,permissionId,id),spaces,version,teamDriveId,"
+         "hasAugmentedPermissions,createdDate,trashingUser(kind,permissionId,"
+         "id),trashedDate,parents(id),shortcutDetails(targetId,targetMimeType,"
+         "targetLookupStatus),capabilities(canCopy,canDownload,canEdit,"
+         "canAddChildren,canDelete,canRemoveChildren,canShare,canTrash,"
+         "canRename,canReadTeamDrive,canMoveTeamDriveItem,"
+         "canMoveItemWithinDrive,canMoveItemOutOfDrive,"
+         "canMoveItemOutOfTeamDrive,canComment,canMoveChildrenWithinDrive),"
+         "driveId,description,iconLink,alternateLink,"
+         "copyRequiresWriterPermission,labels(starred,trashed,restricted,"
+         "viewed)")
     QUERY_PARAMS = {
         "openDrive"    : "true",
         "syncType"     : 0,
@@ -295,7 +294,7 @@ GET {path}?{query_params} HTTP/1.1
             # "reason"       : 102,
             "q": "trashed = false and '{}' in parents".format(folder_id),
             "fields": "kind,nextPageToken,items({}),incompleteSearch".format(
-                self.FOLDER_FIELDS),
+                self.FIELDS),
             "appDataFilter": "NO_APP_DATA",
             "spaces"       : "drive",
             "maxResults"   : 50,
@@ -309,12 +308,12 @@ GET {path}?{query_params} HTTP/1.1
         """Return folder info"""
         params = self.QUERY_PARAMS.copy()
         # reason 1001
-        params["fields"] = self.FOLDER_FIELDS
+        params["fields"] = self.FIELDS
         return self._call("/drive/v2beta/files/{}".format(folder_id), params)
 
     def file_info(self, file_id):
         """Return file info"""
-        params = {"fields": self.FILE_FIELDS, "enforceSingleParent": "true"}
+        params = {"fields": self.FIELDS, "enforceSingleParent": "true"}
         return self._call("/drive/v2beta/files/{}".format(file_id), params)
 
     def _pagination(self, endpoint, params):
