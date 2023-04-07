@@ -237,9 +237,7 @@ class GoogledriveWebAPI():
         "openDrive"    : "true",
         "syncType"     : 0,
         "errorRecovery": "false",
-        "supportsTeamDrives": "true",
         "retryCount"   : 0,
-        "key"          : API_KEY,
     }
     OUTER_HEADERS = {
         'Content-Type': 'text/plain;charset=UTF-8;',
@@ -294,7 +292,7 @@ GET {path}?{query_params} HTTP/1.1
             if not page_token:
                 break
 
-    def _call(self, endpoint, params=(), **kwargs):
+    def _call(self, endpoint, params={}, **kwargs):
         """Call an API endpoint
 
         This encapsulates the HTTP request (as defined in 'DATA') in the
@@ -302,6 +300,7 @@ GET {path}?{query_params} HTTP/1.1
         https://clients6.google.com/batch/drive/v2beta
         """
         boundary_marker = "====={}=====".format(util.generate_token(6))
+        params.update({"supportsTeamDrives": "true", "key": self.API_KEY})
         params_str = urlencode(params)  # safe="()'", quote_via=quote
         data = self.DATA.format(
             boundary_marker=boundary_marker,
