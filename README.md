@@ -8,7 +8,7 @@ in the config file accordingly. Then invoke *gallery-dl* with the `-c`
 option:
 
 ```bash
-$ gallery-dl -c googledrive.conf https://drive.google.com/file/d/0B9P1L--7Wd2vU3VUVlFnbTgtS2c/view
+$ gallery-dl -c addons.conf https://drive.google.com/file/d/0B9P1L--7Wd2vU3VUVlFnbTgtS2c/view
 * ./googledrive/0B9P1L--7Wd2vU3VUVlFnbTgtS2c_spam.txt
 ```
 
