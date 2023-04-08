@@ -24,6 +24,7 @@ main config file and use the add-ons like built-in extractors.
 * [mediafire-dl](https://github.com/Juvenal-Yescas/mediafire-dl)
 * [PatreonDownloader](https://github.com/Foxite/PatreonDownloader)
 * [xeuledoc](https://github.com/Malfrats/xeuledoc)
+* [py-kraken](https://github.com/tha23rd/py-kraken)
 
 
 ## License
