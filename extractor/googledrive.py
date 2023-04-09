@@ -245,6 +245,7 @@ class GoogledriveWebAPI():
     """Interface for Google Drive web API"""
 
     API_KEY = "AIzaSyC1qbk75NzWBvSaDh6KnsjjA9pIrP4lYIE"
+    # ref: https://developers.google.com/drive/api/v3/reference/files
     FIELDS = \
         ("kind,modifiedDate,modifiedByMeDate,lastViewedByMeDate,fileSize,"
          "owners(kind,permissionId,id),lastModifyingUser(kind,permissionId,"
@@ -262,7 +263,8 @@ class GoogledriveWebAPI():
          "canMoveItemWithinDrive,canMoveItemOutOfDrive,"
          "canMoveItemOutOfTeamDrive,canComment,canMoveChildrenWithinDrive),"
          "driveId,description,iconLink,alternateLink,"
-         "copyRequiresWriterPermission,labels(starred,trashed,restricted,"
+         "copyRequiresWriterPermission,headRevisionId,md5Checksum,"
+         "sha1Checksum,sha256Checksum,labels(starred,trashed,restricted,"
          "viewed)")
     QUERY_PARAMS = {
         "openDrive"    : "true",
