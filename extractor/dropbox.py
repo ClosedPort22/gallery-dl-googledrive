@@ -23,7 +23,7 @@ class DropboxShareExtractor(Extractor):
     cookiedomain = ".dropbox.com"
     root = "https://www.dropbox.com"
     pattern = BASE_PATTERN + \
-        r"/s(?:h/([0-9a-z]+)/([0-9a-zA-Z\-_]+)|/([0-9a-z]+))"
+        r"/s(?:h/([0-9a-z]+)/([0-9a-zA-Z\-_]+)(/[^?#&]+)?|/([0-9a-z]+))"
     test = (
         # /s/ file
         ("https://www.dropbox.com/s/bkyoamgqop7kpio/data.txt", {
@@ -76,14 +76,26 @@ class DropboxShareExtractor(Extractor):
              "keyword": {"path": ["Hacknet Save backup", "Disk_1"]},
              "content": "15feabe8e776daad90dc781c7d122852ea266b49",
          }),
+
+        # sub_path
+        ("https://www.dropbox.com/sh/bwjmb40klp8pj2t/"
+         "AAC_25FuKfruJwoD6Sw2ZEbYa/Disk_1?dl=0", {
+             "count": 2,
+         }),
+        ("https://www.dropbox.com/sh/bwjmb40klp8pj2t/"
+         "AAC_25FuKfruJwoD6Sw2ZEbYa/foo/bar?dl=0"),
     )
 
     def __init__(self, match):
         Extractor.__init__(self, match)
-        self.key = match.group(1) or match.group(3)
+        self.key = match.group(1) or match.group(4)
         self.secure_hash = match.group(2)
+        path = match.group(3)
+        if path:
+            self.path = path.strip("/").split("/")
+        else:
+            self.path = []
         self.api = DropboxWebAPI(self)
-        self.path = []
         self.base = None
 
     def items(self):
