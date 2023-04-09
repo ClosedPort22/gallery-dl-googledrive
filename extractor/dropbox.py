@@ -73,6 +73,11 @@ class DropboxShareExtractor(Extractor):
              "keyword": {"path": ["Hacknet Save backup", "Disk_1"]},
              "content": "15feabe8e776daad90dc781c7d122852ea266b49",
          }),
+        # 'folder' not in response ('{}')
+        ("https://www.dropbox.com/sh/d4j7iqvmlc1lc1r/jC6LvcSKqT/"
+         "afrojack_presskit_2014.zip", {
+             "count": 1
+         }),
 
         # sub_path
         ("https://www.dropbox.com/sh/bwjmb40klp8pj2t/"
@@ -215,7 +220,9 @@ class DropboxWebAPI():
             response = self._call(
                 "/list_shared_link_folder_entries", data, notfound="folder")
             if folder is None:
-                folder = response["folder"]
+                folder = response.get("folder")
+                if not folder:
+                    raise exception.NotFoundError("folder")
                 for s in strings:
                     folder[s] = response["folder_" + s]
             entries = response["entries"]
