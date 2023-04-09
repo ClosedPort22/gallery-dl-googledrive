@@ -7,9 +7,6 @@ from gallery_dl import text, exception
 from gallery_dl.cache import cache
 
 
-BASE_PATTERN = r"(?:https?://)?(?:www\.)?dropbox\.com"
-
-
 class DropboxShareExtractor(Extractor):
     """Extractor for shared Dropbox files and folders"""
     category = "dropbox"
@@ -22,8 +19,8 @@ class DropboxShareExtractor(Extractor):
     archive_fmt = "{share_token[linkKey]}_{share_token[secureHash]}"
     cookiedomain = ".dropbox.com"
     root = "https://www.dropbox.com"
-    pattern = BASE_PATTERN + \
-        r"/s(?:h/([0-9a-z]+)/([0-9a-zA-Z\-_]+)(/[^?#&]+)?|/([0-9a-z]+))"
+    pattern = (r"(?:https?://)?(?:www\.)?dropbox\.com/s"
+               r"(?:h/([0-9a-z]+)/([0-9a-zA-Z\-_]+)(/[^?#&]+)?|/([0-9a-z]+))")
     test = (
         # /s/ file
         ("https://www.dropbox.com/s/bkyoamgqop7kpio/data.txt", {
