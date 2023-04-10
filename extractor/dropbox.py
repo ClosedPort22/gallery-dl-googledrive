@@ -80,9 +80,10 @@ class DropboxShareExtractor(Extractor):
          }),
 
         # sub_path
-        ("https://www.dropbox.com/sh/bwjmb40klp8pj2t/"
-         "AAC_25FuKfruJwoD6Sw2ZEbYa/Disk_1?dl=0", {
-             "count": 2,
+        ("https://www.dropbox.com/sh/9olujy823al5trq/"
+         "AAA4RuSe6yhY6sMMxg8DNneaa/Fotos%20Obra?dl=0", {
+             "count": 5,  # no zipping
+             "keyword": {"path": ["Fotos Obra"]},
          }),
         ("https://www.dropbox.com/sh/bwjmb40klp8pj2t/"
          "AAC_25FuKfruJwoD6Sw2ZEbYa/foo/bar?dl=0"),
@@ -94,11 +95,12 @@ class DropboxShareExtractor(Extractor):
         self.secure_hash = match.group(2)
         path = match.group(3)
         if path:
-            self.path = path.strip("/").split("/")
+            self.path = text.unquote(path.strip("/")).split("/")
+            self.base = []
         else:
             self.path = []
+            self.base = None
         self.api = DropboxWebAPI(self)
-        self.base = None
 
     def items(self):
         # https://dl.dropbox.com/s/{key}/[arbitrary filename]
@@ -167,7 +169,7 @@ class DropboxShareExtractor(Extractor):
                 self.key, secure_hash, "/".join(self.path)):
             if folder_data is None:
                 parent_data = item["parent"]
-                if not self.base:
+                if self.base is None:
                     self.base = [parent_data["filename"]]
                 folder_data = {"parent": parent_data,
                                "path": self.base + self.path}
