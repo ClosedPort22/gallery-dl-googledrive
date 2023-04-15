@@ -85,6 +85,13 @@ class DropboxShareExtractor(Extractor):
              "count": 5,  # no zipping
              "keyword": {"path": ["Fotos Obra"]},
          }),
+        # empty folder
+        ("https://www.dropbox.com/sh/a1mg7fhjsaudrsl/"
+         "AAAkxX7szMwDisIkBeNKYASea/Mechanical/Chassis Assy/"
+         "2D Drawings?dl=0", {
+             "count": 0,
+             "keyword": "3244d71b9f0a5f43dd9c41bfaee97355c27b9a7c",
+         }),
         ("https://www.dropbox.com/sh/bwjmb40klp8pj2t/"
          "AAC_25FuKfruJwoD6Sw2ZEbYa/foo/bar?dl=0"),
     )
@@ -164,16 +171,14 @@ class DropboxShareExtractor(Extractor):
     def files(self, secure_hash):
         """Recursively yield files in a folder"""
         folders = []
-        folder_data = None
-        for item in self.api.folder_content(
-                self.key, secure_hash, "/".join(self.path)):
-            if folder_data is None:
-                parent_data = item["parent"]
-                if self.base is None:
-                    self.base = [parent_data["filename"]]
-                folder_data = {"parent": parent_data,
-                               "path": self.base + self.path}
-                yield Message.Directory, folder_data
+        parent_data, items = \
+            self.api.folder_content(self.key, secure_hash, "/".join(self.path))
+        if self.base is None:
+            self.base = [parent_data["filename"]]
+        folder_data = {"parent": parent_data,
+                       "path": self.base + self.path}
+        yield Message.Directory, folder_data
+        for item in items:
             if item["is_dir"] or item["is_symlink"]:  # ?
                 folders.append(item)
                 continue
@@ -206,7 +211,11 @@ class DropboxWebAPI():
         return self.cookiejar["t"]
 
     def folder_content(self, link_key, secure_hash, sub_path=""):
-        """Yield folder content"""
+        """Return a tuple of (folder_info, folder_content)"""
+        result = self._folder_content_impl(link_key, secure_hash, sub_path)
+        return next(result), result
+
+    def _folder_content_impl(self, link_key, secure_hash, sub_path):
         strings = ("share_permission", "share_token", "shared_link_info")
         data = {
             "link_key"   : link_key,
@@ -227,11 +236,11 @@ class DropboxWebAPI():
                     raise exception.NotFoundError("folder")
                 for s in strings:
                     folder[s] = response["folder_" + s]
+                yield folder
             entries = response["entries"]
             for s in strings:
                 for entry, metadata in zip(entries, response[s + "s"]):
                     entry[s] = metadata
-                    entry["parent"] = folder
             yield from entries
 
             if not response["has_more_entries"]:
