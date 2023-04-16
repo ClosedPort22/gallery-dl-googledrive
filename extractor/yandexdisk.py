@@ -108,7 +108,8 @@ class YandexdiskShareExtractor(Extractor):
         self.sk = "y" + util.generate_token(16)
 
         if not self.hash:
-            response = self.request(self.url, notfound="file or folder")
+            url = "{}/{}".format(self.root, self.url.split("/", 3)[3])
+            response = self.request(url, notfound="file or folder")
             self.hash = text.extr(response.text, '"hash":"', '"')
 
         yield from self.files()
