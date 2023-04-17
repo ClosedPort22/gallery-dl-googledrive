@@ -10,12 +10,14 @@ class YandexdiskShareExtractor(Extractor):
     """Extractor for shared Yandex Disk files and folders"""
     category = "yandexdisk"
     subcategory = "share"
+    directory_fmt = ("{category}", "{path[0]:?//}", "{path[1]:?//}",
+                     "{path[2]:?//}", "{path[3:]:J - /}")
     archive_fmt = "{resource_id}_{revision}"
     # must use disk.yandex.ru instead of .net to get 'newSk'
     root = "https://disk.yandex.ru"
     pattern = (r"(?:https?://)?(?:disk\.yandex\.(?:net|com(?:\.tr)?|ru|ua|kz)"
                r"|yadi\.sk|yadisk\.cc)"
-               r"/(?:d/[0-9a-zA-Z_]+/?(.+|$)?|public/?\?hash=(.+))")
+               r"/(?:d/[0-9a-zA-Z-_]+/?(.+|$)?|public/?\?hash=(.+))")
     test = (
         # hash
         ("https://disk.yandex.ru/public/?hash="
@@ -119,7 +121,6 @@ class YandexdiskShareExtractor(Extractor):
         post_data = {"hash": self.hash, "sk": self.sk}
 
         def _retry(response):
-            nonlocal post_data
             if "disposition" in response.url:
                 # if for whatever reason file["file"] fails, prepare to
                 # use "/public/api/download-url"
@@ -177,6 +178,7 @@ class YandexdiskShareExtractor(Extractor):
         self.prepare(parent_data)
         if parent_data["type"] == "file":
             del parent_data["total"]
+            parent_data["path"] = ()  # overwrite "/"
             yield Message.Directory, parent_data
             yield self.commit(parent_data)
             next(items, None)  # exhaust the generator
