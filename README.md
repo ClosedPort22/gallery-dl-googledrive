@@ -22,6 +22,7 @@ main config file and use the add-ons like built-in extractors.
 * [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 * [OpenDirectoryDownloader](https://github.com/KoalaBear84/OpenDirectoryDownloader)
 * [mediafire-dl](https://github.com/Juvenal-Yescas/mediafire-dl)
+* [JDownloader](https://github.com/mirror/jdownloader)
 * [PatreonDownloader](https://github.com/Foxite/PatreonDownloader)
 * [xeuledoc](https://github.com/Malfrats/xeuledoc)
 * [py-kraken](https://github.com/tha23rd/py-kraken)
