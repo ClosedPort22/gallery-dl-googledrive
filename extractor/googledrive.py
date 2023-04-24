@@ -298,7 +298,6 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
             data.update(folder_data)
             data.update(file)
 
-            print(url)
             yield Message.Url, url, data
 
         self.path.pop()
@@ -403,7 +402,7 @@ GET {path}?{query_params} HTTP/1.1
     def _call(self, endpoint, resource_key, params={}, **kwargs):
         """Call an API endpoint
 
-        This encapsulates the HTTP request (as defined in 'DATA') in the
+        This encapsulates the HTTP request (as defined in `DATA`) in the
         payload of a normal HTTP POST request, which is then sent to
         https://clients6.google.com/batch/drive/v2beta
         """
