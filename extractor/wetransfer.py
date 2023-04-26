@@ -10,7 +10,7 @@ class WetransferFileExtractor(Extractor):
     """Extractor for WeTransfer files"""
     category = "wetransfer"
     subcategory = "file"
-    archive_fmt = "{id}"
+    archive_fmt = "{file_id}"
     root = "https://wetransfer.com"
     pattern = (r"(?:https?://)?(?:www\.)?wetransfer\.com/"
                r"downloads/([0-9a-f]{46})/([0-9a-f]{6})")
@@ -18,10 +18,7 @@ class WetransferFileExtractor(Extractor):
         # expired
         ("https://wetransfer.com/downloads/"
          "91c97b339855d6c0f4a2772d9b7a5fe720190406121754/7b85a0", {
-             "pattern": "/api/v4/transfers/"
-                        "91c97b339855d6c0f4a2772d9b7a5fe720190406121754/"
-                        "download$",
-             "content": "da39a3ee5e6b4b0d3255bfef95601890afd80709",  # empty
+             "exception": exception.NotFoundError,
          }),
     )
 
@@ -30,21 +27,19 @@ class WetransferFileExtractor(Extractor):
         self.id = match.group(1)
         self.security_hash = match.group(2)
 
-    def metadata(self):
-        return {
-            "filename" : self.id,
-            "extension": "",
-            "id"       : self.id,
-            "security_hash": self.security_hash,
-        }
+    @staticmethod
+    def prepare(file):
+        """Adjust the content of a file object"""
+        text.nameext_from_url(file["name"], file)
+        # prevent conflict with folder (transfer) metadata
+        file["filesize"] = file.pop("size")
+        file["file_id"] = file.pop("id")
 
     def items(self):
-        data = self.metadata()
-
         def _validate(response):
             # * declared inside 'items' to be able to access 'data'
             # * delegate extraction of direct URL to the downloader to be able
-            #   to skip already downloaded files without making any requests
+            #   to save 1 request per file when skipping downloaded files
             if "content-disposition" in response.headers:  # no filename
                 return True
             del data["_http_method"]
@@ -56,16 +51,30 @@ class WetransferFileExtractor(Extractor):
             text.nameext_from_url(url, data)
             return url
 
+        headers = {"Content-Type": "application/json"}
+        data = {"_http_method"  : "POST",
+                "_http_headers" : headers,
+                "_http_validate": _validate}
         post_data = {"security_hash": self.security_hash,
-                     "intent"       : "entire_transfer"}
-        data.update({"_http_method"  : "POST",
-                     "_http_headers" : {"Content-Type": "application/json"},
-                     "_http_data"    : util.json_dumps(post_data),
-                     "_http_validate": _validate})
+                     "intent"       : "single_file"}
+
+        metadata = self.request(
+            "{}/api/v4/transfers/{}/prepare-download".format(
+                self.root, self.id),
+            data=util.json_dumps({"security_hash": self.security_hash}),
+            method="POST", headers=headers, notfound="transfer").json()
+        items = metadata.pop("items")
+        data["parent"] = metadata
 
         api_url = "{}/api/v4/transfers/{}/download".format(self.root, self.id)
         yield Message.Directory, data
-        yield Message.Url, api_url, data
+
+        for item in items:
+            self.prepare(item)
+            data.update(item)
+            post_data["file_ids"] = (data["file_id"],)
+            data["_http_data"] = util.json_dumps(post_data)
+            yield Message.Url, api_url, data
 
 
 class WetransferWetlExtractor(Extractor):
