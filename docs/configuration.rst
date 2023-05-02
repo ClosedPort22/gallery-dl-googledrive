@@ -52,3 +52,23 @@ Default
     ``false``
 Description
     Fetch metadata for the file. This requires 1 API request per file.
+
+
+extractor.podbean.feed.podcast-logo
+-----------------------------------
+Type
+    ``bool``
+Default
+    ``true``
+Description
+    Extract podcast logo.
+
+
+extractor.podbean.feed.episode-logo
+-----------------------------------
+Type
+    ``bool``
+Default
+    ``true``
+Description
+    Extract episode logo.
