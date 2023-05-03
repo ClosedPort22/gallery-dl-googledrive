@@ -66,15 +66,17 @@ class PodbeanFeedExtractor(Extractor):
         }),
         ("https://aaronmax.podbean.com/feed.xml"),
         ("podbean:https://example.org/feed.xml"),
+        ("podbean:http://example.org/feed.xml"),
+        ("podbean:example.org/feed.xml"),
         ("podbean:https://web.archive.org/web/20200111005954if_/"
          "https://feed.podbean.com/aaronmax/feed.xml"),
     )
 
     def __init__(self, match):
         Extractor.__init__(self, match)
-        # strip the prefix (if present) and use "https://"
-        # XXX: this will break if the url somehow contains "://"
-        self.feed_url = "https://" + self.url.rpartition("://")[-1]
+        # strip the prefix (if present)
+        no, _, url = self.url.partition("podbean:")
+        self.feed_url = text.ensure_http_scheme(self.url if no else url)
 
     @staticmethod
     def prepare_metadata(metadata):
