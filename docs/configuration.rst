@@ -12,6 +12,26 @@ Extractor Options
 =================
 
 
+extractor.abc.listen-episode.image
+----------------------------------
+Type
+    ``bool``
+Default
+    ``true``
+Description
+    Extract image for the episode.
+
+
+extractor.abc.listen-program.image
+----------------------------------
+Type
+    ``bool``
+Default
+    ``false``
+Description
+    Extract image for the program. This requires 1 extra HTTP request.
+
+
 extractor.googledrive.folder.metadata
 -------------------------------------
 Type
