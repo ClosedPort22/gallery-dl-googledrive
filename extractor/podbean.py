@@ -44,9 +44,9 @@ class PodbeanFeedExtractor(Extractor):
             "range": "1-2",
             "count": 2,
             "pattern": r"^https://[0-9a-z]+\.cloudfront\.net/",
-            "keyword": {"podcast": {"itunes_category":
-                                    ["Technology", "News - Tech News",
-                                     "Society & Culture"]}},
+            "keyword": {"?podcast": {"itunes_category":
+                                     ["Technology", "News - Tech News",
+                                      "Society & Culture"]}},
         }),
         ("https://feed.podbean.com/non_existent/feed.xml", {
             "exception": exception.NotFoundError,
