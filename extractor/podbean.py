@@ -64,6 +64,13 @@ class PodbeanFeedExtractor(Extractor):
                 "height": int,
             },
         }),
+        # episode logo in 'media_content'
+        ("https://feed.podbean.com/accesseap/feed.xml", {
+            "options": (("podcast-logo", 0),),
+            "range": "1",
+            "count": 1,
+            "pattern": r"^https://[0-9a-z]+\.cloudfront\.net/image-logo",
+        }),
         ("https://aaronmax.podbean.com/feed.xml"),
         ("podbean:https://example.org/feed.xml"),
         ("podbean:http://example.org/feed.xml"),
@@ -110,6 +117,10 @@ class PodbeanFeedExtractor(Extractor):
         item["enclosure"]["length"] = text.parse_int(
             item["enclosure"]["length"])
 
+        if "media_content" in item and \
+                item["media_content"]["medium"] == "image":
+            item["itunes_image"] = item.pop("media_content")["url"]
+
         for key in ("itunes_episode", "itunes_season"):
             if key in item:
                 item[key] = text.parse_int(item[key])
@@ -147,12 +158,13 @@ class PodbeanFeedExtractor(Extractor):
         episode_image = self.config("episode-logo", True)
 
         for item in items:
-            data = _elements_to_dict(item, extr=_extr_item)
+            data = _elements_to_dict(
+                item, pred=_pred_item, extr=_extr_item)
             self.prepare_item(data)
             data["podcast"] = metadata
             yield Message.Directory, data
 
-            if episode_image:
+            if episode_image and "itunes_image" in data:
                 url = data["itunes_image"]
                 text.nameext_from_url(url, data)
                 yield Message.Url, url, data
@@ -182,6 +194,7 @@ _ns_map = (
     ("{http://www.w3.org/2005/Atom}", "atom"),
     ("{http://purl.org/rss/1.0/modules/content/}", "content"),
     ("{http://www.itunes.com/dtds/podcast-1.0.dtd}", "itunes"),
+    ("{http://search.yahoo.com/mrss/}", "media"),
 )
 
 
@@ -243,17 +256,23 @@ def _extr_item(element):
         data["isPermaLink"] = True if data["isPermaLink"] == "true" else False
         return data
 
-    if element.tag == "enclosure":
+    if element.tag == "enclosure" or "search.yahoo.com" in element.tag:
         return element.attrib
 
     return _extr(element)
 
 
-def _elements_to_dict(element, get_key=_get_key, extr=_extr):
+def _pred_item(element):
+    if "search.yahoo.com" in element.tag:
+        return False
+    return len(element)
+
+
+def _elements_to_dict(element, pred=len, get_key=_get_key, extr=_extr):
     """Recursively extract useful information in an element (or a
     list of elements) and convert it into a `dict`
     """
-    if len(element):
-        return {get_key(child): _elements_to_dict(child, get_key, extr)
+    if pred(element):
+        return {get_key(child): _elements_to_dict(child, pred, get_key, extr)
                 for child in element}
     return extr(element)
