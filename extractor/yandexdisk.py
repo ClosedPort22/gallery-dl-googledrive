@@ -42,11 +42,11 @@ class YandexdiskShareExtractor(Extractor):
         ("https://disk.yandex.ru/d/pUkOIfxY5R_DEA", {
             "count": 1,
             "pattern": r"^https://downloader\.disk\.yandex\.ru/disk/",
-            "keyword": {"path": ["01.Брендбук ВПН"]},
+            "keyword": {"path": ("01.Брендбук ВПН",)},
         }),
         ("https://disk.yandex.ru/d/pUkOIfxY5R_DEA/", {
             "count": 1,
-            "keyword": {"path": ["01.Брендбук ВПН"]},
+            "keyword": {"path": ("01.Брендбук ВПН",)},
         }),
         ("https://disk.yandex.com/public?hash="
          "guv8LQMJRVXrlf16SXqWFjfWp%2B4Ml463jyCMFjkFvfVHoO8KIWrVCV0PR2XsFBQqq"
@@ -57,7 +57,7 @@ class YandexdiskShareExtractor(Extractor):
         ("https://disk.yandex.com/d/DCXoxtp5f236ag/%D0%A2%D0%9C-19-9-1%20%D0"
          "%9C%D0%94%D0%9A%2002.01.%20", {
              "count": 6,
-             "keyword": {"path": ["ТМ-19-9-1 МДК 02.01. "]},
+             "keyword": {"path": ("ТМ-19-9-1 МДК 02.01. ",)},
          }),
         ("https://disk.yandex.com/public?hash="
          "guv8LQMJRVXrlf16SXqWFjfWp%2B4Ml463jyCMFjkFvfVHoO8KIWrVCV0PR2XsFBQqq"
@@ -89,10 +89,10 @@ class YandexdiskShareExtractor(Extractor):
             # XXX: how exactly are plus signs in folder names handled?
             path = text.unquote(path.replace("+", " "))
         if path:
-            self.path = path.strip("/").split("/")
-            self.base = []
+            self.base_path = tuple(path.strip("/").split("/"))
+            self.base = ()
         else:
-            self.path = []
+            self.base_path = ()
             self.base = None
 
     @staticmethod
@@ -114,7 +114,7 @@ class YandexdiskShareExtractor(Extractor):
             response = self.request(url, notfound="file or folder")
             self.hash = text.extr(response.text, '"hash":"', '"')
 
-        yield from self.files()
+        yield from self.files(self.base_path)
 
     def commit(self, data):
         # declared inside 'commit' to be able to access 'data'
@@ -170,10 +170,10 @@ class YandexdiskShareExtractor(Extractor):
         # may help avoid CAPTCHAs
         return Message.Url, data["file"], data
 
-    def files(self):
+    def files(self, parent_path):
         """Recursively yield files in the folder"""
         parent_data, items = \
-            self.api.folder_content(self.hash, "/" + "/".join(self.path))
+            self.api.folder_content(self.hash, "/" + "/".join(parent_path))
 
         self.prepare(parent_data)
         if parent_data["type"] == "file":
@@ -185,8 +185,8 @@ class YandexdiskShareExtractor(Extractor):
             return
 
         if self.base is None:
-            self.base = [parent_data["name"]]
-        folder_data = {"parent": parent_data, "path": self.base + self.path}
+            self.base = (parent_data["name"],)
+        folder_data = {"parent": parent_data, "path": self.base + parent_path}
         yield Message.Directory, folder_data
 
         folders = []
@@ -199,9 +199,7 @@ class YandexdiskShareExtractor(Extractor):
             yield self.commit(item)
 
         for folder in folders:
-            self.path.append(folder["name"])
-            yield from self.files()
-            self.path.pop()
+            yield from self.files(parent_path + (folder["name"],))
 
 
 class YandexdiskWebAPI():
