@@ -199,7 +199,7 @@ class YandexdiskShareExtractor(Extractor):
             yield self.commit(item)
 
         for folder in folders:
-            self.path.append(folder["path"].lstrip("/"))
+            self.path.append(folder["name"])
             yield from self.files()
             self.path.pop()
 
