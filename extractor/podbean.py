@@ -4,6 +4,7 @@
 
 from gallery_dl.extractor.common import Extractor, Message
 from gallery_dl import text, exception
+from requests import exceptions as rexc
 import xml.etree.ElementTree as ET
 
 
@@ -84,6 +85,10 @@ class PodbeanFeedExtractor(Extractor):
         # strip the prefix (if present)
         no, _, url = self.url.partition("podbean:")
         self.feed_url = text.ensure_http_scheme(self.url if no else url)
+        if self._write_pages:
+            self.log.warning(
+                "Dumping response is not supported for this extractor")
+            self._write_pages = False
 
     @staticmethod
     def prepare_metadata(metadata):
@@ -125,13 +130,38 @@ class PodbeanFeedExtractor(Extractor):
             if key in item:
                 item[key] = text.parse_int(item[key])
 
+    def _try_parse_raw(self, raw):
+        response = None
+        tries = 1
+
+        while True:
+            try:
+                return ET.parse(raw)
+            except (rexc.ConnectionError,
+                    rexc.Timeout,
+                    rexc.ChunkedEncodingError,
+                    rexc.ContentDecodingError) as exc:
+                msg = exc
+            except rexc.RequestException as exc:
+                raise exception.HttpError(exc)
+
+            self.log.debug("%s (%s/%s)", msg, tries, self._retries+1)
+            if tries > self._retries:
+                break
+            self.sleep(
+                max(tries, self._interval()) if self._interval else tries,
+                "retry")
+            tries += 1
+
+        raise exception.HttpError(msg, response)
+
     def items(self):
         # XXX: this might break if the site switches to Cloudflare
         # in the future
         raw = self.request(self.feed_url, notfound="user", stream=True).raw
         raw.decode_content = True
         # raw.read = functools.partial(raw.read, decode_content=True)
-        root = ET.parse(raw).getroot()
+        root = self._try_parse_raw(raw).getroot()
 
         items = []
         channel_metadata = []
