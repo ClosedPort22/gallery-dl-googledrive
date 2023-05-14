@@ -30,7 +30,7 @@ class PcloudShareExtractor(Extractor):
                              "Pedidas_TAKICARDIA_Mixing By.Dj Luis Carlos Mix",
                  "ownerispremium": bool,
                  "parent"      : {},
-                 "path"        : [],
+                 "path"        : (),
              },
              "pattern": r"^https://api\.pcloud\.com/getpublinkdownload",
          }),
@@ -55,7 +55,7 @@ class PcloudShareExtractor(Extractor):
                      "date_created": "type:datetime",
                      "name": "Heckman-SE136746-MS-raw-files",
                  },
-                 "path": ["Heckman-SE136746-MS-raw-files"],
+                 "path": ("Heckman-SE136746-MS-raw-files",),
              },
          }),
         # expired
@@ -80,7 +80,6 @@ class PcloudShareExtractor(Extractor):
         self.api_root = \
             "https://{}api.pcloud.com".format("e" if "e" in subdomain else "")
         self.code = match.group(3)
-        self.path = []
 
     def items(self):
         response = self.request(
@@ -94,7 +93,7 @@ class PcloudShareExtractor(Extractor):
             print(response)
             raise exception.NotFoundError("file or folder")
         response.update(self.metadata())
-        yield from self.files(items, response)
+        yield from self.files(items, response, ())
 
     def metadata(self):
         """Return general metadata"""
@@ -124,13 +123,12 @@ class PcloudShareExtractor(Extractor):
         text.nameext_from_url(data["name"], data)
         return Message.Url, url, data
 
-    def files(self, items, data):
+    def files(self, items, data, parent_path):
         """Recursively yield files in a folder"""
+        path = parent_path + (data["parent"].get("name"),)
         # the first element should never appear in the actual directory
         # structure
-        self.path.append(data["parent"].get("name"))
-
-        data["path"] = self.path[1:]
+        data["path"] = path[1:]
         yield Message.Directory, data
 
         folders = []
@@ -144,6 +142,4 @@ class PcloudShareExtractor(Extractor):
 
         for folder in folders:
             data["parent"] = folder
-            yield from self.files(folder.pop("contents"), data)
-
-        self.path.pop()
+            yield from self.files(folder.pop("contents"), data, path)

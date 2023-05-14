@@ -133,7 +133,7 @@ class MediafireFolderExtractor(MediafireExtractor):
                 "extension": "pdf",
                 "filename" : "re:^LIHKG_",
                 "filesize" : int,
-                "path"     : list,
+                "path"     : tuple,
             },
         }),
         # request metadata for base folder
@@ -142,7 +142,7 @@ class MediafireFolderExtractor(MediafireExtractor):
             "count": 6,
             "keyword": {
                 "parent": {"name": "Johnny Reb III"},
-                "path"  : ["Johnny Reb III"],
+                "path"  : ("Johnny Reb III",),
             },
         }),
         # nested folder
@@ -171,7 +171,6 @@ class MediafireFolderExtractor(MediafireExtractor):
         MediafireExtractor.__init__(self, match)
         self.id = match.group(1)
         self.api = MediafireWebAPI(self)
-        self.path = []
 
     def metadata(self):
         if not self.config("metadata", False):
@@ -181,13 +180,14 @@ class MediafireFolderExtractor(MediafireExtractor):
         return data
 
     def items(self):
-        yield from self.files(self.id, self.metadata())
+        yield from self.files(self.id, self.metadata(), ())
 
-    def files(self, id, parent_data):
+    def files(self, id, parent_data, parent_path):
         """Recursively yield files in a folder"""
-        self.path.append(parent_data.get("name") or parent_data["folderkey"])
+        path = parent_path + \
+            (parent_data.get("name") or parent_data["folderkey"],)
 
-        folder_data = {"parent": parent_data, "path": self.path.copy()}
+        folder_data = {"parent": parent_data, "path": path}
         yield Message.Directory, folder_data
 
         for file in self.api.folder_content(id, "files"):
@@ -204,9 +204,7 @@ class MediafireFolderExtractor(MediafireExtractor):
 
         for folder in self.api.folder_content(id, "folders"):
             self.prepare(folder)
-            yield from self.files(folder["folderkey"], folder)
-
-        self.path.pop()
+            yield from self.files(folder["folderkey"], folder, path)
 
 
 class MediafireWebAPI():

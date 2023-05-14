@@ -53,7 +53,7 @@ class DropboxShareExtractor(Extractor):
                  "extension": "re:txt|mdmp",
                  "filename" : str,
                  "filesize" : int,
-                 "path"     : ["CyberLink"],
+                 "path"     : ("CyberLink",),
              }
          }),
         # 404 file
@@ -70,7 +70,7 @@ class DropboxShareExtractor(Extractor):
          "AACgqigq8Jwwio0mgEKgrr2Wa?dl=0", {
              "count": 2,
              "pattern": "/sharing/fetch_user_content_link$",
-             "keyword": {"path": ["Hacknet Save backup", "Disk_1"]},
+             "keyword": {"path": ("Hacknet Save backup", "Disk_1")},
              "content": "15feabe8e776daad90dc781c7d122852ea266b49",
          }),
         # 'folder' not in response ('{}')
@@ -83,7 +83,7 @@ class DropboxShareExtractor(Extractor):
         ("https://www.dropbox.com/sh/9olujy823al5trq/"
          "AAA4RuSe6yhY6sMMxg8DNneaa/Fotos%20Obra?dl=0", {
              "count": 5,  # no zipping
-             "keyword": {"path": ["Fotos Obra"]},
+             "keyword": {"path": ("Fotos Obra",)},
          }),
         # empty folder
         ("https://www.dropbox.com/sh/a1mg7fhjsaudrsl/"
@@ -102,10 +102,10 @@ class DropboxShareExtractor(Extractor):
         self.secure_hash = match.group(2)
         path = match.group(3)
         if path:
-            self.path = text.unquote(path.strip("/")).split("/")
-            self.base = []
+            self.base_path = tuple(text.unquote(path.strip("/")).split("/"))
+            self.base = ()
         else:
-            self.path = []
+            self.base_path = ()
             self.base = None
         self.api = DropboxWebAPI(self)
 
@@ -115,7 +115,7 @@ class DropboxShareExtractor(Extractor):
         # https://dl.dropbox.com/sh/{key}/{hash}/[does not work for folders]
         if self.secure_hash:
             try:
-                yield from self.files(self.secure_hash)
+                yield from self.files(self.secure_hash, self.base_path)
                 return
             except exception.NotFoundError:
                 pass
@@ -168,16 +168,18 @@ class DropboxShareExtractor(Extractor):
         file["date"] = text.parse_timestamp(file["ts"])
         text.nameext_from_url(file["filename"], file)
 
-    def files(self, secure_hash):
+    def files(self, secure_hash, parent_path):
         """Recursively yield files in a folder"""
-        folders = []
         parent_data, items = \
-            self.api.folder_content(self.key, secure_hash, "/".join(self.path))
+            self.api.folder_content(
+                self.key, secure_hash, "/".join(parent_path))
+
         if self.base is None:
-            self.base = [parent_data["filename"]]
-        folder_data = {"parent": parent_data,
-                       "path": self.base + self.path}
+            self.base = (parent_data["filename"],)
+        folder_data = {"parent": parent_data, "path": self.base + parent_path}
         yield Message.Directory, folder_data
+
+        folders = []
         for item in items:
             if item["is_dir"] or item["is_symlink"]:  # ?
                 folders.append(item)
@@ -187,9 +189,8 @@ class DropboxShareExtractor(Extractor):
             yield self.commit(item["shared_link_info"]["url"], item)
 
         for folder in folders:
-            self.path.append(folder["filename"])
-            yield from self.files(folder["share_token"]["secureHash"])
-            self.path.pop()
+            yield from self.files(folder["share_token"]["secureHash"],
+                                  parent_path + (folder["filename"],))
 
 
 class DropboxWebAPI():

@@ -183,7 +183,7 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
              "count": 3,
              "keyword": {
                  "parent": {"id": "1dQ4sx0-__Nvg65rxTSgQrl7VyW_FZ9QI"},
-                 "path"  : ["1dQ4sx0-__Nvg65rxTSgQrl7VyW_FZ9QI"],
+                 "path"  : ("1dQ4sx0-__Nvg65rxTSgQrl7VyW_FZ9QI",),
              },
          }),
         # folder with resourcekey, files don't have resourcekey
@@ -220,7 +220,7 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
              "count": 3,
              "keyword": {
                  "parent": {"title": "Forrest"},
-                 "path"  : ["Forrest"],
+                 "path"  : ("Forrest",),
              },
          }),
         # nested folder
@@ -235,7 +235,7 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
                  "filename" : "file",
                  "title"    : "file.txt",
                  "parent"   : dict,
-                 "path"     : list,
+                 "path"     : tuple,
              },
          }),
         # more than 50 files
@@ -269,7 +269,6 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
         self.id = match.group(1)
         self.resource_key = match.group(2) or ""
         self.api = GoogledriveWebAPI(self)
-        self.path = []
 
     def metadata(self):
         if not self.config("metadata", False):
@@ -279,20 +278,20 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
         return data
 
     def items(self):
-        yield from self.files(self.id, self.metadata())
+        yield from self.files(self.id, self.metadata(), ())
 
-    def files(self, id, parent_data):
+    def files(self, id, parent_data, parent_path):
         """Recursively yield files in a folder"""
-        self.path.append(parent_data.get("title") or parent_data["id"])
+        path = parent_path + (parent_data.get("title") or parent_data["id"],)
 
-        folder_data = {"parent": parent_data, "path": self.path.copy()}
+        folder_data = {"parent": parent_data, "path": path}
         yield Message.Directory, folder_data
 
         for file in self.api.folder_content(id, self.resource_key):
             self.prepare(file)
             if file["mimeType"] == self.FOLDER_MIME_TYPE:
                 # trust 'orderBy'
-                yield from self.files(file["id"], file)
+                yield from self.files(file["id"], file, path)
                 continue
             url, data = self.url_data(
                 file["id"], file.get("resourceKey") or "")
@@ -300,8 +299,6 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
             data.update(file)
 
             yield Message.Url, url, data
-
-        self.path.pop()
 
 
 class GoogledriveWebAPI():
