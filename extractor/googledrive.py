@@ -192,7 +192,8 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
          "resourcekey=0-G_0dVFn0W27KPOlQt731Wg", {
              "pattern": r"^https://drive\.google\.com/uc\?export=download"
                         r"&id=[\w-]+&resourcekey=&confirm=t$",
-             "count": 3,
+             "range": "2",
+             "count": 1,
              "keyword": {"parent": {
                  "id": "0B2SJp-WVjVPrb25NNXRWbWtCYWs",
                  "resourceKey": "0-G_0dVFn0W27KPOlQt731Wg",

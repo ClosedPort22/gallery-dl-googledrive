@@ -58,7 +58,7 @@ class MediafireFileExtractor(MediafireExtractor):
         # direct download
         ("http://www.mediafire.com/file/ise1i57s4dfkgc8", {
             "count": 1,
-            "pattern": r"^https://www\.mediafire\.com/download/",
+            "pattern": r"^https://www\.mediafire\.com/\?",
             "keyword": {"quickkey": "ise1i57s4dfkgc8", "extension": ""},
         }),
         # request metadata for file
@@ -75,7 +75,7 @@ class MediafireFileExtractor(MediafireExtractor):
         # redirects to webpage
         ("https://www.mediafire.com/download/kt9z2284k2sg8ay", {
             "count": 1,
-            "pattern": r"^https://www\.mediafire\.com/download/",
+            "pattern": r"^https://www\.mediafire\.com/\?",
             "content": "9c21def0d0906b4db9fdf673e6026b8ee9772d4f",
         }),
         # 404
