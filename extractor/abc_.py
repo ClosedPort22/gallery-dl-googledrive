@@ -228,19 +228,33 @@ class AbcIviewVideoExtractor(AbcIviewExtractor):
         self.house_number = match.group(1)
 
     def items(self):
-        response = self.request(
-            "{}/{}".format(self.api_root, self.house_number),
-            notfound="video").json()
+        try:
+            response = self.request(
+                "{}/{}".format(self.api_root, self.house_number),
+                notfound="video").json()
+        except exception.NotFoundError:
+            # unpublished episode
+            # 302 -> self.api_root + f'/api/programs/{program}/{house_number}'
+            response = self.request(
+                "{}/api/programs/{}".format(self.root, self.house_number),
+                notfound="video").json()
 
         response["date"] = text.parse_datetime(
             response["pubDate"], "%Y-%m-%d %H:%M:%S")
         data = response.copy()
-        # pacify formatters
-        response["url"] = response["shareUrl"]
-        response["extension"] = "mp4"
+
         yield Message.Directory, response
         # disable ytdl downloader to download images only
-        yield Message.Url, "ytdl:" + self.url, response
+        if "_embedded" in response:
+            # pacify formatters
+            response["url"] = response["shareUrl"]
+            response["extension"] = "mp4"
+            yield Message.Url, "ytdl:" + self.url, response
+
+        if "thumbnail" in response:
+            data["url"] = url = response["thumbnail"]
+            text.nameext_from_url(url, data)
+            yield Message.Url, url, data
 
         for image in response.get("images") or ():
             data.update(image)
