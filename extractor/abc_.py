@@ -6,27 +6,31 @@ from gallery_dl.extractor.common import Extractor, Message
 from gallery_dl import text, util, exception
 from functools import reduce
 from operator import getitem
+import itertools
 
 
-BASE_PATTERN = r"(?:https?://)?(?:www\.)?abc\.net\.au"
-LISTEN_PATTERN = BASE_PATTERN + \
-    r"(/(?:radio|(?:kids)?listen)/programs/[0-9a-z-:]+)"
+LISTEN_PATTERN = (
+    r"(?:https?://)?(?:www\.)?abc\.net\.au"
+    r"(/(?:radio|(?:kids)?listen)/programs/[0-9a-z-:]+)")
+IVIEW_PATTERN = r"(?:https?://)?iview\.abc\.net\.au"
 
 
 class AbcExtractor(Extractor):
     """Base class for ABC extractors"""
     category = "abc"
+
+
+class AbcListenExtractor(AbcExtractor):
+    """Base class for ABC Listen extractors"""
     root = "https://www.abc.net.au"
 
-    @staticmethod
-    def _next_data(txt):
-        """Extract `__NEXT_DATA__`"""
-        return util.json_loads(text.extr(
-            txt,
-            '"__NEXT_DATA__" type="application/json">', "</script>"))
+
+class AbcIviewExtractor(AbcExtractor):
+    """Base class for ABC iview extractors"""
+    root = "https://iview.abc.net.au"
 
 
-class AbcListenEpisodeExtractor(AbcExtractor):
+class AbcListenEpisodeExtractor(AbcListenExtractor):
     """Extractor for a single episode"""
     subcategory = "listen-episode"
     archive_fmt = "{id}_{date_updated}_{filename}.{extension}"
@@ -70,7 +74,7 @@ class AbcListenEpisodeExtractor(AbcExtractor):
     )
 
     def __init__(self, match):
-        AbcExtractor.__init__(self, match)
+        AbcListenExtractor.__init__(self, match)
         self.webpage = "".join((self.root, match.group(1), match.group(2)))
 
     @staticmethod
@@ -80,7 +84,7 @@ class AbcListenEpisodeExtractor(AbcExtractor):
         data["date_updated"] = text.parse_datetime(dp["updatedDate"])
 
     def items(self):
-        next_data = self._next_data(
+        next_data = _next_data(
             self.request(self.webpage, notfound="episode").text)
         dp = next_data["props"]["pageProps"]["data"]["documentProps"]
         self.prepare(dp)
@@ -114,17 +118,7 @@ class AbcListenEpisodeExtractor(AbcExtractor):
             yield Message.Url, url, file
 
 
-def _try_retrieve(obj, paths, default=None):
-    for path in paths:
-        try:
-            # same as obj[path[0]][path[1]]...
-            return reduce(getitem, path, obj)
-        except (KeyError, IndexError):
-            pass
-    return default
-
-
-class AbcListenProgramExtractor(AbcExtractor):
+class AbcListenProgramExtractor(AbcListenExtractor):
     """Extractor for a program"""
     subcategory = "listen-program"
     archive_fmt = "{filename}.{extension}"
@@ -161,13 +155,13 @@ class AbcListenProgramExtractor(AbcExtractor):
     )
 
     def __init__(self, match):
-        AbcExtractor.__init__(self, match)
+        AbcListenExtractor.__init__(self, match)
         self.webpage = self.root + match.group(1)
 
     def _image(self):
         if not self.config("image", False):
             return
-        next_data = self._next_data(
+        next_data = _next_data(
             self.request(self.webpage, notfound="program").text)
         pp = next_data["props"]["pageProps"]
         data = pp["heroDescriptionPrepared"].copy()
@@ -192,9 +186,185 @@ class AbcListenProgramExtractor(AbcExtractor):
     def items(self):
         yield from self._image()
 
-        next_data = self._next_data(
+        next_data = _next_data(
             self.request(self.webpage + "/episodes", notfound="program").text)
         for item in (next_data["props"]["pageProps"]
                      ["programCollectionPrepared"]["items"]):
             yield (Message.Queue, self.root + item["articleLink"],
                    {"_extractor": AbcListenEpisodeExtractor})
+
+
+class AbcIviewVideoExtractor(AbcIviewExtractor):
+    """Extractor for ABC iview videos"""
+    subcategory = "iview-video"
+    archive_fmt = "{url}"
+    filename_fmt = "{filename|title}.{extension}"
+    directory_fmt = ("{category}", "{showTitle}")
+    pattern = IVIEW_PATTERN + r"/(?:[^/]+/)*video/([^/?#]+)"
+    test = (
+        ("https://iview.abc.net.au/video/LE2227H007S00", {
+            "range": "1",
+            "count": 1,
+            "pattern": r"^ytdl:https://iview\.abc\.net\.au"
+                       r"/video/LE2227H007S00",
+            "keyword": {"date": "type:datetime"},
+        }),
+        ("https://iview.abc.net.au/video/LE2227H008S00", {
+            "range": "2-",
+            "count": 10,
+            "pattern": r"^https://cdn\.iview\.abc\.net\.au/",
+        }),
+        ("https://iview.abc.net.au/video/LE2227H025S00", {
+            "exception": exception.NotFoundError,
+        }),
+        ("https://iview.abc.net.au"
+         "/show/gruen/series/14/video/LE2227H008S00"),
+    )
+
+    api_root = "https://api.iview.abc.net.au/v3/video"
+
+    def __init__(self, match):
+        AbcIviewExtractor.__init__(self, match)
+        self.house_number = match.group(1)
+
+    def items(self):
+        response = self.request(
+            "{}/{}".format(self.api_root, self.house_number),
+            notfound="video").json()
+
+        response["date"] = text.parse_datetime(
+            response["pubDate"], "%Y-%m-%d %H:%M:%S")
+        data = response.copy()
+        # pacify formatters
+        response["url"] = response["shareUrl"]
+        response["extension"] = "mp4"
+        yield Message.Directory, response
+        # disable ytdl downloader to download images only
+        yield Message.Url, "ytdl:" + self.url, response
+
+        for image in response.get("images") or ():
+            data.update(image)
+            url = image["url"]
+            text.nameext_from_url(url, data)
+            yield Message.Url, url, data
+
+
+class AbcIviewSeriesExtractor(AbcIviewExtractor):
+    """Extractor for ABC iview series (seasons)"""
+    subcategory = "iview-series"
+    archive_fmt = "{url}"
+    directory_fmt = ("{category}", "{parent[showTitle]}", "{parent[title]}")
+    pattern = \
+        IVIEW_PATTERN + r"/show/([^/]+)/series/([\w-]+)(?:$|/(?!video).*)"
+    test = (
+        ("https://iview.abc.net.au/show/gruen/series/11", {
+            "options": (("chapter-filter", "False"),),
+            "count": 1,
+            "pattern": r"LE1927H_5d6dc8e58e3e3\.jpg$",
+        }),
+        ("https://iview.abc.net.au/show/gruen/series/14", {
+            "options": (("image-filter", "False"),),
+            "count": 9,
+            "pattern": AbcIviewVideoExtractor.pattern,
+        }),
+        ("https://iview.abc.net.au/show/dictionary/series/2", {
+            "exception": exception.NotFoundError,
+        }),
+        ("https://iview.abc.net.au/show/dictionary/series/2/"),
+        ("https://iview.abc.net.au/show/dictionary/series/2/foo/bar"),
+    )
+
+    # v2 sometimes has exclusive series thumbnails
+    # v3 images are already included in /v3/video
+    api_root = "https://api.iview.abc.net.au/v2/series"
+
+    def __init__(self, match):
+        AbcIviewExtractor.__init__(self, match)
+        self.series_name, self.series = match.groups()
+
+    def items(self):
+        response = self.request(
+            "{}/{}/{}".format(self.api_root, self.series_name, self.series),
+            notfound="series").json()
+
+        data = {"parent": response}
+        yield Message.Directory, data
+
+        url = response["thumbnail"]
+        file = text.nameext_from_url(url)
+        file["parent"] = response
+        file["url"] = url
+        yield Message.Url, url, file
+
+        data["_extractor"] = AbcIviewVideoExtractor
+        # use --chapter-filter to exclude videoExtras
+        for video in itertools.chain.from_iterable(
+                response["_embedded"].values()):
+            data.update(video)
+            # 'shareUrl' is unreliable
+            yield (Message.Queue,
+                   self.root + data["_links"]["deeplink"]["href"], data)
+
+
+class AbcIviewProgramExtractor(AbcIviewExtractor):
+    """Extractor for ABC iview programs (shows)"""
+    subcategory = "iview-program"
+    pattern = IVIEW_PATTERN + r"/show/([\w-]+)(?:$|/(?!series|video).*)"
+    test = (
+        ("https://iview.abc.net.au/show/gruen", {
+            "count": 4,
+            "pattern": r"^https://iview\.abc\.net\.au"
+                       r"/show/gruen/series/[0-9]+",
+            "keyword": {"parent": {"date": "type:datetime"}},
+        }),
+        ("https://iview.abc.net.au/show/dictionary", {
+            "exception": exception.NotFoundError,
+        }),
+        ("https://iview.abc.net.au/show/dictionary/"),
+        ("https://iview.abc.net.au/show/dictionary/foo/bar"),
+    )
+
+    def __init__(self, match):
+        AbcIviewExtractor.__init__(self, match)
+        self.series_name = match.group(1)
+
+    def items(self):
+        response = self.request(
+            "{}/show/{}".format(self.root, self.series_name),
+            notfound="program")
+        pd = _initial_state(response.text)["route"]["pageData"]
+        series_list = pd["_embedded"].pop("seriesList")
+
+        pd["date"] = text.parse_datetime(pd["updated"], "%Y-%m-%d %H:%M:%S")
+
+        data = {"parent": pd, "_extractor": AbcIviewSeriesExtractor}
+        for series in series_list:
+            data.update(series)
+            yield (Message.Queue,
+                   self.root + data["_links"]["deeplink"]["href"], data)
+
+
+###############################################################################
+# Helper functions ############################################################
+
+
+def _try_retrieve(obj, paths, default=None):
+    for path in paths:
+        try:
+            # same as obj[path[0]][path[1]]...
+            return reduce(getitem, path, obj)
+        except (KeyError, IndexError):
+            pass
+    return default
+
+
+def _initial_state(txt):
+    return util.json_loads(util.json_loads(text.extr(
+        txt, "__INITIAL_STATE__", "</script>").strip("\r\n =;")))
+
+
+def _next_data(txt):
+    return util.json_loads(text.extr(
+        txt,
+        '"__NEXT_DATA__" type="application/json">',
+        "</script>"))
