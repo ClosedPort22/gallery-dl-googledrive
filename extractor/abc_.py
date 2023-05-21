@@ -239,8 +239,11 @@ class AbcIviewVideoExtractor(AbcIviewExtractor):
                 "{}/api/programs/{}".format(self.root, self.house_number),
                 notfound="video").json()
 
-        response["date"] = text.parse_datetime(
-            response["pubDate"], "%Y-%m-%d %H:%M:%S")
+        try:
+            response["date"] = text.parse_datetime(
+                response["pubDate"], "%Y-%m-%d %H:%M:%S")
+        except KeyError:
+            pass
         data = response.copy()
 
         yield Message.Directory, response
