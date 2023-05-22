@@ -19,7 +19,7 @@ class PodbeanFeedExtractor(Extractor):
     pattern = \
         (r"(?:podbean:(?:https?://)?.+|"  # custom domain name and path
          r"(?:https?://)(?:feed\.podbean\.com/[\w-]+|"  # name in path
-         r"(?!www|feed)[\w-]+\.podbean\.com))/feed\.xml")  # name as subdomain
+         r"(?!www|feed)[\w-]+\.podbean\.com)/feed)\.xml")  # name as subdomain
     test = (
         ("https://aaronmax.podbean.com/feed.xml", {
             "options": (("podcast-logo", 0), ("episode-logo", 0)),
@@ -76,8 +76,11 @@ class PodbeanFeedExtractor(Extractor):
         ("podbean:https://example.org/feed.xml"),
         ("podbean:http://example.org/feed.xml"),
         ("podbean:example.org/feed.xml"),
+        ("podbean:example.org/rss.xml"),
         ("podbean:https://web.archive.org/web/20200111005954if_/"
          "https://feed.podbean.com/aaronmax/feed.xml"),
+        ("podbean:https://web.archive.org/web/20200111005954if_/"
+         "https://feed.podbean.com/aaronmax/rss.xml"),
     )
 
     def __init__(self, match):
@@ -93,12 +96,15 @@ class PodbeanFeedExtractor(Extractor):
     @staticmethod
     def prepare_metadata(metadata):
         """Adjust the content of `data`"""
-        metadata["date"] = text.parse_datetime(
-            metadata["pubDate"], "%a, %d %b %Y %H:%M:%S %z")
-        metadata["ttl"] = text.parse_int(metadata["ttl"])
-        image = metadata["image"]
-        for key in ("width", "height"):
-            image[key] = text.parse_int(image[key])
+        if "date" in metadata:
+            metadata["date"] = text.parse_datetime(
+                metadata["pubDate"], "%a, %d %b %Y %H:%M:%S %z")
+        if "ttl" in metadata:
+            metadata["ttl"] = text.parse_int(metadata["ttl"])
+        if "image" in metadata:
+            image = metadata["image"]
+            for key in ("width", "height"):
+                image[key] = text.parse_int(image[key])
 
         categories = []
         remove = []
@@ -174,12 +180,13 @@ class PodbeanFeedExtractor(Extractor):
         metadata = _elements_to_dict(
             channel_metadata, get_key=_get_key_metadata)
         self.prepare_metadata(metadata)
-        if self.config("podcast-logo", True):
+        if self.config("podcast-logo", True) and "itunes_image" in metadata:
             url = metadata["itunes_image"]
             data = text.nameext_from_url(url)
-            image = metadata["image"]
-            data["width"] = image["width"]
-            data["height"] = image["height"]
+            if "image" in metadata:
+                image = metadata["image"]
+                data["width"] = image["width"]
+                data["height"] = image["height"]
 
             data.update(metadata)
             yield Message.Directory, data
