@@ -337,6 +337,11 @@ class AbcIviewProgramExtractor(AbcIviewExtractor):
         ("https://iview.abc.net.au/show/dictionary", {
             "exception": exception.NotFoundError,
         }),
+        # single-video program
+        ("https://iview.abc.net.au/show/kangaroo-beach-summer-special", {
+            "count": 1,
+            "pattern": r"^https://iview\.abc\.net\.au/video/CH2105H001S00$"
+        }),
         ("https://iview.abc.net.au/show/dictionary/"),
         ("https://iview.abc.net.au/show/dictionary/foo/bar"),
     )
@@ -350,15 +355,23 @@ class AbcIviewProgramExtractor(AbcIviewExtractor):
             "{}/show/{}".format(self.root, self.series_name),
             notfound="program")
         pd = _initial_state(response.text)["route"]["pageData"]
-        series_list = pd["_embedded"].pop("seriesList")
+        series_list = pd["_embedded"].pop("seriesList", None)
 
         pd["date"] = text.parse_datetime(pd["updated"], "%Y-%m-%d %H:%M:%S")
 
-        data = {"parent": pd, "_extractor": AbcIviewSeriesExtractor}
-        for series in series_list:
-            data.update(series)
-            yield (Message.Queue,
-                   self.root + data["_links"]["deeplink"]["href"], data)
+        data = {"parent": pd}
+        if series_list:
+            data["_extractor"] = AbcIviewSeriesExtractor
+            for series in series_list:
+                data.update(series)
+                yield (Message.Queue,
+                       self.root + data["_links"]["deeplink"]["href"], data)
+        else:
+            # single-video program
+            data["_extractor"] = AbcIviewVideoExtractor
+            url = "https://iview.abc.net.au/video/" + \
+                pd["_embedded"].pop("highlightVideo")["id"]
+            yield Message.Queue, url, data
 
 
 ###############################################################################
