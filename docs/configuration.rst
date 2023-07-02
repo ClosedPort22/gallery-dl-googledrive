@@ -32,6 +32,28 @@ Description
     Extract image for the program. This requires 1 extra HTTP request.
 
 
+extractor.disneyplus.region
+---------------------------
+Type
+    ``string``
+Default
+    ``US``
+Description
+    Specifies which region to use. Accepts
+    [ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) country codes.
+
+
+extractor.disneyplus.language
+-----------------------------
+Type
+    ``string``
+Default
+    ``en``
+Description
+    Specifies which language to use. Accepts
+    [ISO 639-1](https://en.wikipedia.org/wiki/ISO_639-1) language codes.
+
+
 extractor.googledrive.folder.metadata
 -------------------------------------
 Type

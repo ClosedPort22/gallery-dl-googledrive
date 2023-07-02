@@ -5,6 +5,7 @@
 from gallery_dl.extractor.common import Extractor, Message
 from gallery_dl import text, exception
 from itertools import count
+import re
 
 
 class DisneyplusExtractor(Extractor):
@@ -18,10 +19,20 @@ class DisneyplusExtractor(Extractor):
         "{seasonSequenceNumber:?Season //}",
         "{episodeNumber|episodeSequenceNumber:?Episode //}")
     filename_fmt = "{name|filename}_{id[:8]}.{extension}"
+    _match_code = re.compile(r"[a-zA-Z]{2}").fullmatch
 
     def __init__(self, match):
         Extractor.__init__(self, match)
+        self.region = self._get_code("region", "US").upper()
+        self.language = self._get_code("language", "en").lower()
         self.seen = set()
+
+    def _get_code(self, key, default):
+        # TODO: check against a list of allowed codes
+        code = self.config(key, default)
+        if isinstance(code, str) and self._match_code(code):
+            return code
+        raise ValueError("Invalid %s: %s", key, code)
 
     def images(self, obj):
         """Yield messages from a series or video object"""
@@ -89,7 +100,7 @@ class DisneyplusVideoExtractor(DisneyplusExtractor):
         self.id = match.group(1)
 
     def items(self):
-        api = DisneyplusAPI(self)
+        api = DisneyplusAPI(self, self.region, self.language)
         return self.images(api.video(self.id))
 
 
@@ -100,7 +111,27 @@ class DisneyplusProgramExtractor(DisneyplusExtractor):
                r"[0-9a-z-]+/([0-9a-zA-Z]{12})")
     test = (
         ("https://www.disneyplus.com/series/baymax/1D141qnxDHLI", {
-            "count": 48,
+            "count": 50,
+        }),
+        # language and region
+        ("https://www.disneyplus.com/series/baymax/1D141qnxDHLI", {
+            "options": (("region", "JP"), ("language", "ja")),
+            "range": "40-",
+            "keyword": {
+                "text": {
+                    "title": {
+                        "full": {"program": {"default": {"language": "ja"}}},
+                    },
+                },
+            },
+        }),
+        # not available in the US
+        ("https://www.disneyplus.com/series/attack-on-titan/5D0Qx5ecSvHm", {
+            "exception": exception.NotFoundError,
+        }),
+        ("https://www.disneyplus.com/series/attack-on-titan/5D0Qx5ecSvHm", {
+            "options": (("region", "JP"), ("language", "ja")),
+            "count": 117,
         }),
         ("https://www.disneyplus.com/movies/coco/db9orsI5O4gC", {
             "count": 41,
@@ -116,7 +147,7 @@ class DisneyplusProgramExtractor(DisneyplusExtractor):
         self.id = match.group(2)
 
     def items(self):
-        api = DisneyplusAPI(self)
+        api = DisneyplusAPI(self, self.region, self.language)
 
         if self.type == "series":
             series_data = api.series(self.id)
@@ -165,18 +196,18 @@ class DisneyplusProgramExtractor(DisneyplusExtractor):
 
 class DisneyplusAPI():
     """Interface for Disney+'s web API"""
-    # TODO: region support?
-    API_TEMPLATE = (
-        "https://disney.content.edge.bamgrid.com/svc/content/{endpoint}/"
-        "version/5.1/region/US/audience/false/maturity/1899/language/en")
     PER_PAGE = 30
 
-    def __init__(self, extractor):
+    def __init__(self, extractor, region, language):
         self.request = extractor.request
+        self.api_template = (
+            "https://disney.content.edge.bamgrid.com/svc/content/{{endpoint}}/"
+            "version/5.1/region/{}/audience/false/maturity/1899/language/"
+            "{}".format(region, language))
 
     def video(self, content_id):
         """Return video info"""
-        template = self.API_TEMPLATE + "/contentId/{content_id}"
+        template = self.api_template + "/contentId/{content_id}"
         resp = self.request(template.format(
             endpoint="DmcVideo", content_id=content_id),
             notfound="video").json()
@@ -187,7 +218,7 @@ class DisneyplusAPI():
 
     def movie(self, family_id):
         """Return movie info"""
-        template = self.API_TEMPLATE + "/encodedFamilyId/{family_id}"
+        template = self.api_template + "/encodedFamilyId/{family_id}"
         resp = self.request(template.format(
             endpoint="DmcVideoMeta", family_id=family_id),
             notfound="movie").json()
@@ -198,7 +229,7 @@ class DisneyplusAPI():
 
     def series(self, series_id):
         """Return series info"""
-        template = self.API_TEMPLATE + "/encodedSeriesId/{series_id}"
+        template = self.api_template + "/encodedSeriesId/{series_id}"
         resp = self.request(template.format(
             endpoint="DmcSeries", series_id=series_id),
             notfound="series").json()
@@ -209,7 +240,7 @@ class DisneyplusAPI():
 
     def episodes(self, season_id):
         """Yield all episodes in a season"""
-        template = self.API_TEMPLATE + "/seasonId/{season_id}"
+        template = self.api_template + "/seasonId/{season_id}"
         return self._pagination(
             template.format(endpoint="DmcEpisodes", season_id=season_id),
             "DmcEpisodes", notfound="season")
@@ -217,7 +248,7 @@ class DisneyplusAPI():
     def seasons(self, series_id):
         """Yield all seasons in a series"""
         # 'DmcSeasons' does not work despite being listed in the manifest JSON
-        template = self.API_TEMPLATE + "/encodedSeriesId/{series_id}"
+        template = self.api_template + "/encodedSeriesId/{series_id}"
         resp = self.request(template.format(
             endpoint="DmcSeriesBundle", series_id=series_id),
             notfound="series").json()
@@ -227,7 +258,7 @@ class DisneyplusAPI():
 
     def extras(self, family_id):
         """Yield all extras of a movie or series"""
-        template = self.API_TEMPLATE + "/encodedFamilyId/{family_id}"
+        template = self.api_template + "/encodedFamilyId/{family_id}"
         return self._pagination(
             template.format(endpoint="DmcExtras", family_id=family_id),
             "DmcExtras", notfound="movie or series")
