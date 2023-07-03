@@ -19,18 +19,19 @@ class DisneyplusExtractor(Extractor):
         "{seasonSequenceNumber:?Season //}",
         "{episodeNumber|episodeSequenceNumber:?Episode //}")
     filename_fmt = "{name|filename}_{id[:8]}.{extension}"
-    _match_code = re.compile(r"[a-zA-Z]{2}").fullmatch
+    _match_region_code = re.compile(r"[a-zA-Z]{2}").fullmatch
+    _match_lang_code = re.compile(r"^[a-zA-Z]{2}($|-[a-zA-Z]{2,4}$)").match
 
     def __init__(self, match):
         Extractor.__init__(self, match)
-        self.region = self._get_code("region", "US").upper()
-        self.language = self._get_code("language", "en").lower()
+        self.region = self._get_code("region", "US", self._match_region_code)
+        self.language = self._get_code("language", "en", self._match_lang_code)
         self.seen = set()
 
-    def _get_code(self, key, default):
+    def _get_code(self, key, default, matcher):
         # TODO: check against a list of allowed codes
         code = self.config(key, default)
-        if isinstance(code, str) and self._match_code(code):
+        if isinstance(code, str) and matcher(code):
             return code
         raise ValueError("Invalid %s: %s", key, code)
 
@@ -141,6 +142,14 @@ class DisneyplusProgramExtractor(DisneyplusExtractor):
                     },
                 },
             },
+        }),
+        ("https://www.disneyplus.com/series/dug-days/6iYvNcEmPPRl", {
+            "options": (("language", "en-GB"),),
+            "count": 43,
+        }),
+        ("https://www.disneyplus.com/series/dug-days/6iYvNcEmPPRl", {
+            "options": (("language", "zh-Hant"),),
+            "count": 43,
         }),
         # not available in the US
         ("https://www.disneyplus.com/series/attack-on-titan/5D0Qx5ecSvHm", {

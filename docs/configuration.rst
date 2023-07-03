@@ -50,8 +50,8 @@ Type
 Default
     ``en``
 Description
-    Specifies which language to use. Accepts
-    `ISO 639-1 <https://en.wikipedia.org/wiki/ISO_639-1>`__ language codes.
+    Specifies which language to use. Accepts ``en``, ``en-GB``,
+    ``zh-Hant``, etc.
 
 
 extractor.disneyplus.program.seasons
