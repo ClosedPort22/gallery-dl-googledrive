@@ -40,7 +40,7 @@ Default
     ``US``
 Description
     Specifies which region to use. Accepts
-    [ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) country codes.
+    `ISO 3166-2 <https://en.wikipedia.org/wiki/ISO_3166-2>`__ country codes.
 
 
 extractor.disneyplus.language
@@ -51,7 +51,7 @@ Default
     ``en``
 Description
     Specifies which language to use. Accepts
-    [ISO 639-1](https://en.wikipedia.org/wiki/ISO_639-1) language codes.
+    `ISO 639-1 <https://en.wikipedia.org/wiki/ISO_639-1>`__ language codes.
 
 
 extractor.disneyplus.program.seasons
