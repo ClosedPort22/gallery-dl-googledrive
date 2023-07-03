@@ -110,8 +110,25 @@ class DisneyplusProgramExtractor(DisneyplusExtractor):
     pattern = (r"(?:https?://)(?:www\.)?disneyplus\.com/(series|movies)/"
                r"[0-9a-z-]+/([0-9a-zA-Z]{12})")
     test = (
+        # series
         ("https://www.disneyplus.com/series/baymax/1D141qnxDHLI", {
             "count": 50,
+        }),
+        ("https://www.disneyplus.com/series/baymax/1D141qnxDHLI", {
+            "options": (("seasons", 0),),
+            "count": 38,
+        }),
+        ("https://www.disneyplus.com/series/baymax/1D141qnxDHLI", {
+            "options": (("seasons", 0), ("episodes", 0)),
+            "count": 38,
+        }),
+        ("https://www.disneyplus.com/series/dug-days/6iYvNcEmPPRl", {
+            "count": 43,
+        }),
+        # series extras
+        ("https://www.disneyplus.com/series/dug-days/6iYvNcEmPPRl", {
+            "options": (("extras", 0),),
+            "count": 42,
         }),
         # language and region
         ("https://www.disneyplus.com/series/baymax/1D141qnxDHLI", {
@@ -133,8 +150,14 @@ class DisneyplusProgramExtractor(DisneyplusExtractor):
             "options": (("region", "JP"), ("language", "ja")),
             "count": 117,
         }),
+        # movie
         ("https://www.disneyplus.com/movies/coco/db9orsI5O4gC", {
             "count": 41,
+        }),
+        # movie extras
+        ("https://www.disneyplus.com/movies/coco/db9orsI5O4gC", {
+            "options": (("extras", 0),),
+            "count": 31,
         }),
         ("https://www.disneyplus.com/movies/coco/db9orsI5OFFF", {
             "exception": exception.NotFoundError,
@@ -155,13 +178,16 @@ class DisneyplusProgramExtractor(DisneyplusExtractor):
             yield from self.images(series_data)
             yield from self.video_art(series_data)
 
-            for season in api.seasons(self.id):
-                # allow metadata files to be saved in the correct directory
-                season["text"] = series_data["text"]
-                yield Message.Directory, season
+            if self.config("seasons", True):
+                episodes = self.config("episodes", True)
+                for season in api.seasons(self.id):
+                    # allow metadata files to be saved in the correct directory
+                    season["text"] = series_data["text"]
+                    yield Message.Directory, season
 
-                for video in api.episodes(season["seasonId"]):
-                    yield from self.images(video)
+                    if episodes:
+                        for video in api.episodes(season["seasonId"]):
+                            yield from self.images(video)
 
         elif self.type == "movies":
             extras_id = self.id
@@ -170,8 +196,9 @@ class DisneyplusProgramExtractor(DisneyplusExtractor):
         else:  # should never happen
             raise ValueError("Unexpected URL type: %s:%s", self.type, self.url)
 
-        for extra in api.extras(extras_id):
-            yield from self.images(extra)
+        if self.config("extras", True):
+            for extra in api.extras(extras_id):
+                yield from self.images(extra)
 
     def video_art(self, series):
         """Yield videos in a series object"""

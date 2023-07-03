@@ -54,6 +54,39 @@ Description
     [ISO 639-1](https://en.wikipedia.org/wiki/ISO_639-1) language codes.
 
 
+extractor.disneyplus.program.seasons
+------------------------------------
+Type
+    ``bool``
+Default
+    ``true``
+Description
+    Controls whether to fetch season metadata. This requires 1 HTTP request.
+
+
+extractor.disneyplus.program.episodes
+-------------------------------------
+Type
+    ``bool``
+Default
+    ``true``
+Description
+    Controls whether to fetch episode metadata. This requires 1 HTTP request
+    per 30 episodes. This option will be ignored if
+    `seasons <extractor.disneyplus.program.seasons_>`_ is set to ``false``.
+
+
+extractor.disneyplus.program.extras
+-----------------------------------
+Type
+    ``bool``
+Default
+    ``true``
+Description
+    Controls whether to fetch extras. This requires 1 HTTP request
+    per 30 extras.
+
+
 extractor.googledrive.folder.metadata
 -------------------------------------
 Type
