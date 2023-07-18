@@ -333,17 +333,17 @@ class GoogledriveWebAPI():
         "retryCount"   : 0,
     }
     OUTER_HEADERS = {
-        'Content-Type': 'text/plain;charset=UTF-8;',
-        'Origin'      : 'https://drive.google.com',
+        "Content-Type": "text/plain;charset=UTF-8",
+        "Origin"      : "https://drive.google.com",
     }
-    DATA = """--{boundary_marker}
-content-type: application/http
-content-transfer-encoding: binary
-
-GET {path}?{query_params} HTTP/1.1
-{headers}
-
---{boundary_marker}
+    DATA = """--{boundary_marker}\r
+content-type: application/http\r
+content-transfer-encoding: binary\r
+\r
+GET {path}?{query_params} HTTP/1.1\r
+{headers}\r
+\r
+--{boundary_marker}\r
 """
 
     def __init__(self, extractor):
