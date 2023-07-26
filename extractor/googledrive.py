@@ -16,6 +16,9 @@ class GoogledriveExtractor(Extractor):
     category = "googledrive"
     filename_fmt = "{id}.{extension}"
     archive_fmt = "{id}"
+    cookiedomain = ".google.com"
+    cookienames = ("SID", "__Secure-1PSID", "__Secure-3PSID",
+                   "__Secure-1PSIDTS", "__Secure-3PSIDTS")
     root = "https://drive.google.com"
 
     @staticmethod
