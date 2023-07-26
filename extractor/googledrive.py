@@ -36,18 +36,6 @@ class GoogledriveExtractor(Extractor):
                 file["filename"] = file["title"]
         file["parents"] = [x["id"] for x in file.get("parents") or ()]
 
-    def _validate(self, response):
-        # delegate checks to the downloader to be able to skip already
-        # downloaded files without making any requests
-        if "content-disposition" in response.headers:
-            return True
-        if "x-auto-login" in response.headers:  # redirected to login page
-            raise exception.AuthorizationError()
-        self.log.warning(
-            "Quota exceeded for anonymous downloads. "
-            "Use cookies to bypass this error.")
-        return False
-
     def url_data(self, id, resource_key):
         """Get URL and data from file ID and (optionally) resourcekey"""
         url = "{}/uc?export=download&id={}&resourcekey={}&confirm=t".format(
@@ -56,10 +44,20 @@ class GoogledriveExtractor(Extractor):
             "id"            : id,
             "extension"     : "",
             "resourceKey"   : resource_key,
-            "_http_validate": self._validate,
+            "_http_validate": _validate,
         }
 
         return url, data
+
+
+def _validate(response):
+    # delegate checks to the downloader to be able to skip already
+    # downloaded files without making any requests
+    if "content-disposition" in response.headers:
+        return True
+    if "x-auto-login" in response.headers:  # redirected to login page
+        raise exception.AuthorizationError()
+    return False
 
 
 class GoogledriveFileExtractor(GoogledriveExtractor):
