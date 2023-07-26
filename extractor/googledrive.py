@@ -38,6 +38,23 @@ class GoogledriveExtractor(Extractor):
 
     def url_data(self, id, resource_key):
         """Get URL and data from file ID and (optionally) resourcekey"""
+        def _validate(response):
+            # * declared inside 'items' to be able to access 'data'
+            # * delegate checks to the downloader to be able to skip already
+            #   downloaded files without making any requests
+            if "content-disposition" in response.headers:
+                return True
+            if "x-auto-login" in response.headers:  # redirected to login page
+                raise exception.AuthorizationError()
+            # Google does not respect 'confirm=t' when using cookies
+            extr = text.extract_from(response.text)
+            url = extr('<form id="download-form" action="', '"')
+            if url:
+                data["_http_method"] = extr('method="', '"') or "GET"
+                return text.unescape(url)
+
+            return False
+
         url = "{}/uc?export=download&id={}&resourcekey={}&confirm=t".format(
             self.root, id, resource_key)
         data = {
@@ -48,16 +65,6 @@ class GoogledriveExtractor(Extractor):
         }
 
         return url, data
-
-
-def _validate(response):
-    # delegate checks to the downloader to be able to skip already
-    # downloaded files without making any requests
-    if "content-disposition" in response.headers:
-        return True
-    if "x-auto-login" in response.headers:  # redirected to login page
-        raise exception.AuthorizationError()
-    return False
 
 
 class GoogledriveFileExtractor(GoogledriveExtractor):
