@@ -42,11 +42,10 @@ def _validate(response):
     if "content-disposition" in response.headers:
         return True
     # download response content
-    extr = text.extract_from(response.text)
     # return True to save response as file
-    return extr("window.location.href", ";").strip(" ='") or \
-        text.extr(extr('<a class="input popsok"', "</a>"), 'href="', '"') or \
-        False
+    return text.extr(text.extr(
+        response.text,
+        '<a class="input popsok"', "</a>"), 'href="', '"') or False
 
 
 class MediafireFileExtractor(MediafireExtractor):
