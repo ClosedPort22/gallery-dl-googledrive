@@ -32,6 +32,31 @@ Description
     Extract image for the program. This requires 1 extra HTTP request.
 
 
+extractor.archiveofourown.view-adult
+------------------------------------
+Type
+    ``bool``
+Default
+    ``true``
+Description
+    Fetch stories that could potentially contain adult content.
+
+
+extractor.archiveofourown.format
+--------------------------------
+Type
+    * ``string``
+    * ``list`` of ``string``s
+Default
+    ``epub``
+Description
+    A (comma-separated) list of file formats to download.
+    Accepted values are ``EPUB``, ``AZW3``, ``MOBI``, ``PDF``,
+    and ``HTML`` (case insensitive).
+
+    It is possible to use "all" instead of listing all values separately.
+
+
 extractor.disneyplus.region
 ---------------------------
 Type
