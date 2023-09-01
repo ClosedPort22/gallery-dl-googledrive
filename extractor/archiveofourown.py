@@ -231,7 +231,10 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
             types = types.split(",")
 
         for type in types:
-            url = metadata["downloads"][type.upper()]
+            try:
+                url = metadata["downloads"][type.upper()]
+            except KeyError:
+                continue
             text.nameext_from_url(url, metadata)
             # use download.archiveofourown.org by default
             # this saves 1 RTT
@@ -283,6 +286,7 @@ class ArchiveofourownTagExtractor(ArchiveofourownExtractor):
 
 
 class ArchiveofourownSeriesExtractor(ArchiveofourownExtractor):
+    """Extractor for a series on AO3"""
     subcategory = "series"
     pattern = BASE_PATTERN + r"/series/(\d+)"
     test = (
