@@ -5,6 +5,7 @@
 from gallery_dl.extractor.common import Extractor, Message, exception
 from gallery_dl import text
 
+
 BASE_PATTERN = (r"(?:https?://)(?:archiveofourown\.(?:org|com|net)"
                 r"|(?:www\.)?ao3\.org)")
 
@@ -79,6 +80,10 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
                 "125416864": "6. Chapter 6",
                 "125657206": "7. Chapter 7"
             }},
+        }),
+        # unescape HTML
+        ("https://archiveofourown.org/works/40969242", {
+            "keyword": {"title": "Badge & O'Possum: Ace Attorneys"},
         }),
         # could have adult content (not rated)
         ("https://archiveofourown.org/works/30290274", {
@@ -158,18 +163,18 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
             if key == "Collections":
                 extr = text.extract_from(group)
                 meta["collections_url"] = self.root + extr('href="', '"')
-                meta[key] = extr(">", "<")
+                meta[key] = text.unescape(extr(">", "<"))
             elif key == "Series":
                 extr = text.extract_from(group)
                 pos = extr('"position">', "<")
                 url = extr('href="', '"')
                 meta["series_url"] = self.root + url
                 meta["series_id"] = url.rpartition("/")[-1]
-                name = extr(">", "<")
+                name = text.unescape(extr(">", "<"))
                 meta[key] = pos + name
                 meta["series_name"] = name
             else:
-                tags = tuple(strip_html(html) for html in
+                tags = tuple(text.unescape(strip_html(html)) for html in
                              text.extract_iter(group, "<a class=", "</a>"))
                 if tags:
                     meta[key] = tags
@@ -191,8 +196,8 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
         if workskin:
             meta["workskin"] = workskin.strip()
 
-        meta["title"] = \
-            extr_page('<h2 class="title heading">', "</h2>").strip()
+        meta["title"] = text.unescape(extr_page(
+            '<h2 class="title heading">', "</h2>")).strip()
 
         # summary
         meta["summary"] = text.extr(
@@ -332,7 +337,8 @@ class ArchiveofourownSeriesExtractor(ArchiveofourownExtractor):
 
         meta = {
             "id"  : self.id,
-            "name": extr('<h2 class="heading">', "</h2>").strip(),
+            "name": text.unescape(extr(
+                '<h2 class="heading">', "</h2>")).strip(),
         }
 
         groups = extr('<dl class="series meta group">', "</div")
