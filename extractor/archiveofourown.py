@@ -205,6 +205,9 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
             '<blockquote class="userstuff">', "</blockquote>").strip()
 
         # is the story completed?
+        # https://github.com/JimmXinu/FanFicFare/blob
+        # /20ea9a00edfc4d17f9464c23ec5bb6f39b5cd8ed/fanficfare/adapters
+        # /adapter_archiveofourownorg.py#L383
         if "Completed" in meta:
             meta["is_completed"] = True
         else:

@@ -25,6 +25,7 @@ main config file and use the add-ons like built-in extractors.
 * [JDownloader](https://github.com/mirror/jdownloader)
 * [PatreonDownloader](https://github.com/Foxite/PatreonDownloader)
 * [xeuledoc](https://github.com/Malfrats/xeuledoc)
+* [FanFicFare](https://github.com/JimmXinu/FanFicFare)
 * [py-kraken](https://github.com/tha23rd/py-kraken)
 
 
