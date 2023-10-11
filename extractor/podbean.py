@@ -83,8 +83,7 @@ class PodbeanFeedExtractor(Extractor):
          "https://feed.podbean.com/aaronmax/rss.xml"),
     )
 
-    def __init__(self, match):
-        Extractor.__init__(self, match)
+    def _init(self):
         # strip the prefix (if present)
         no, _, url = self.url.partition("podbean:")
         self.feed_url = text.ensure_http_scheme(self.url if no else url)

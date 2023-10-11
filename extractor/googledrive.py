@@ -154,6 +154,8 @@ class GoogledriveFileExtractor(GoogledriveExtractor):
         GoogledriveExtractor.__init__(self, match)
         self.id = match.group(1) or match.group(2)
         self.resource_key = match.group(3) or ""
+
+    def _init(self):
         if self.config("metadata", False):
             self.api = GoogledriveWebAPI(self)
         else:
@@ -276,6 +278,8 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
         GoogledriveExtractor.__init__(self, match)
         self.id = match.group(1)
         self.resource_key = match.group(2) or ""
+
+    def _init(self):
         self.api = GoogledriveWebAPI(self)
 
     def metadata(self):

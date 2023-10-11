@@ -17,8 +17,7 @@ class DbreeExtractor(Extractor):
     cookiedomain = ".dbree.org"
     root = "https://dbree.org"
 
-    def __init__(self, match):
-        Extractor.__init__(self, match)
+    def _init(self):
         domain = self.root.rpartition("/")[2]
         cookies = self.session.cookies
         if not cookies.get("PHPSESSID", domain=domain):

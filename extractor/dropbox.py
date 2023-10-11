@@ -107,6 +107,8 @@ class DropboxShareExtractor(Extractor):
         else:
             self.base_path = ()
             self.base = None
+
+    def _init(self):
         self.api = DropboxWebAPI(self)
 
     def items(self):

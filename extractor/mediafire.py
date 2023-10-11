@@ -91,6 +91,8 @@ class MediafireFileExtractor(MediafireExtractor):
     def __init__(self, match):
         Extractor.__init__(self, match)
         self.id = match.group(1)
+
+    def _init(self):
         if self.config("metadata", False):
             self.api = MediafireWebAPI(self)
         else:
@@ -169,6 +171,8 @@ class MediafireFolderExtractor(MediafireExtractor):
     def __init__(self, match):
         MediafireExtractor.__init__(self, match)
         self.id = match.group(1)
+
+    def _init(self):
         self.api = MediafireWebAPI(self)
 
     def metadata(self):

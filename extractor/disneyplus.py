@@ -22,8 +22,7 @@ class DisneyplusExtractor(Extractor):
     _match_region_code = re.compile(r"[a-zA-Z]{2}").fullmatch
     _match_lang_code = re.compile(r"^[a-zA-Z]{2}($|-[a-zA-Z]{2,4}$)").match
 
-    def __init__(self, match):
-        Extractor.__init__(self, match)
+    def _init(self):
         self.region = self._get_code("region", "US", self._match_region_code)
         self.language = self._get_code("language", "en", self._match_lang_code)
         self.seen = set()
