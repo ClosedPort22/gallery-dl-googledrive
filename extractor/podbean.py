@@ -18,7 +18,7 @@ class PodbeanFeedExtractor(Extractor):
     pattern = \
         (r"(?:podbean:(?:https?://)?.+|"  # custom domain name and path
          r"(?:https?://)(?:feed\.podbean\.com/[\w-]+|"  # name in path
-         r"(?!www|feed)[\w-]+\.podbean\.com)/feed)\.xml")  # name as subdomain
+         r"(?!www|feed)[\w-]+\.podbean\.com)/feed\.xml)")  # name as subdomain
     test = (
         ("https://aaronmax.podbean.com/feed.xml", {
             "options": (("podcast-logo", 0), ("episode-logo", 0)),
@@ -80,6 +80,8 @@ class PodbeanFeedExtractor(Extractor):
          "https://feed.podbean.com/aaronmax/feed.xml"),
         ("podbean:https://web.archive.org/web/20200111005954if_/"
          "https://feed.podbean.com/aaronmax/rss.xml"),
+        ("podbean:http://example.org/feed"),
+        ("podbean:http://example.org/feed/"),
     )
 
     def _init(self):
@@ -133,7 +135,8 @@ class PodbeanFeedExtractor(Extractor):
         if "image" in metadata:
             image = metadata["image"]
             for key in ("width", "height"):
-                image[key] = text.parse_int(image[key])
+                if key in image:
+                    image[key] = text.parse_int(image[key])
 
         categories = []
         remove = []
@@ -215,8 +218,9 @@ class PodbeanFeedExtractor(Extractor):
             data = text.nameext_from_url(url)
             if "image" in metadata:
                 image = metadata["image"]
-                data["width"] = image["width"]
-                data["height"] = image["height"]
+                for key in ("width", "height"):
+                    if key in image:
+                        data[key] = image[key]
 
             data.update(metadata)
             yield Message.Directory, data
@@ -262,6 +266,8 @@ _ns_map = (
     ("{http://purl.org/rss/1.0/modules/content/}", "content"),
     ("{http://www.itunes.com/dtds/podcast-1.0.dtd}", "itunes"),
     ("{http://search.yahoo.com/mrss/}", "media"),
+    ("{https://podcastindex.org/namespace/1.0}", "podcast"),
+    ("{http://purl.org/dc/elements/1.1/}", "dc"),
 )
 
 
