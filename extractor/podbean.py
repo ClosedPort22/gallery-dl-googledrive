@@ -5,7 +5,6 @@
 from gallery_dl.extractor.common import Extractor, Message
 from gallery_dl import text, exception
 from requests import exceptions as rexc
-import xml.etree.ElementTree as ET
 
 
 class PodbeanFeedExtractor(Extractor):
@@ -92,6 +91,37 @@ class PodbeanFeedExtractor(Extractor):
                 "Dumping response is not supported for this extractor")
             self._write_pages = False
 
+        # by default, the Python implementation of XMLParser is shadowed by
+        # the C implementation; we undo this to be able get the original
+        # namespace prefixes
+        # see https://stackoverflow.com/a/55261552
+        import _elementtree
+        try:
+            del _elementtree.XMLParser
+        except AttributeError:
+            # in case deleted twice
+            return
+
+        try:
+            from xml.parsers import expat
+        except ImportError:
+            try:
+                import pyexpat as expat
+            except ImportError:
+                return
+
+        old_pc = expat.ParserCreate
+
+        def ParserCreatePatched(*args, **kwargs):
+            args = list(args)
+            try:
+                args[1] = None
+            except IndexError:
+                kwargs["namespace_separator"] = None
+            return old_pc(*args, **kwargs)
+
+        expat.ParserCreate = ParserCreatePatched
+
     @staticmethod
     def prepare_metadata(metadata):
         """Adjust the content of `data`"""
@@ -136,6 +166,7 @@ class PodbeanFeedExtractor(Extractor):
                 item[key] = text.parse_int(item[key])
 
     def _try_parse_raw(self, raw):
+        import xml.etree.ElementTree as ET
         response = None
         tries = 1
 
@@ -236,9 +267,12 @@ _ns_map = (
 
 def _get_key(element):
     tag = element.tag
-    if "{" not in tag:
+    if ":" not in tag:
         return tag
-    # remove namespace
+    if "{" not in tag:
+        # original prefix
+        return tag.replace(":", "_")
+    # monkey patch failed for some reason; we remove the prefix ourselves
     for ns, orig in _ns_map:
         if ns in tag:
             return "{}_{}".format(orig, tag.rpartition("}")[-1])
