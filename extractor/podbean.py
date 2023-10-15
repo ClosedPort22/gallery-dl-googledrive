@@ -71,6 +71,18 @@ class PodbeanFeedExtractor(Extractor):
             "count": 1,
             "pattern": r"^https://[0-9a-z]+\.cloudfront\.net/image-logo",
         }),
+        # arbitrary provider
+        # 'locked' field
+        ("podbean:https://feeds.transistor.fm/500-words", {
+            "options": (("podcast-logo", 0), ("episode-logo", 0)),
+            "range": "1",
+            "count": 1,
+            "pattern": r"media\.transistor\.fm",
+            "keyword": {"podcast": {"podcast_locked": {
+                "locked": False,
+                "owner": "lee@redcupagency.com",
+            }}},
+        }),
         ("https://aaronmax.podbean.com/feed.xml"),
         ("podbean:https://example.org/feed.xml"),
         ("podbean:http://example.org/feed.xml"),
@@ -211,7 +223,7 @@ class PodbeanFeedExtractor(Extractor):
                 channel_metadata.append(child)
 
         metadata = _elements_to_dict(
-            channel_metadata, get_key=_get_key_metadata)
+            channel_metadata, get_key=_get_key_metadata, extr=_extr_metadata)
         self.prepare_metadata(metadata)
         if self.config("podcast-logo", True) and "itunes_image" in metadata:
             url = metadata["itunes_image"]
@@ -329,17 +341,28 @@ def _extr_item(element):
     if element.tag == "guid":
         data = {"guid": element.text}
         data.update(element.attrib)
-        data["isPermaLink"] = True if data["isPermaLink"] == "true" else False
+        data["isPermaLink"] = data["isPermaLink"] == "true"
         return data
 
-    if element.tag == "enclosure" or "search.yahoo.com" in element.tag:
+    if element.tag == "enclosure" or \
+        element.tag.startswith("media:") or \
+            "search.yahoo.com" in element.tag:
         return element.attrib
 
     return _extr(element)
 
 
+def _extr_metadata(element):
+    if element.tag.endswith("locked"):
+        data = element.attrib.copy()
+        data["locked"] = _extr(element)
+        return data
+
+    return _extr(element)
+
+
 def _pred_item(element):
-    if "search.yahoo.com" in element.tag:
+    if element.tag.startswith("media:") or "search.yahoo.com" in element.tag:
         return False
     return len(element)
 
