@@ -3,7 +3,7 @@
 """Extractors for Podbean"""
 
 from gallery_dl.extractor.common import Extractor, Message
-from gallery_dl import text, exception
+from gallery_dl import text, exception, ytdl
 from requests import exceptions as rexc
 
 
@@ -96,6 +96,14 @@ class PodbeanFeedExtractor(Extractor):
         ("podbean:http://example.org/feed/"),
     )
 
+    @staticmethod
+    def _clean_url(url):
+        """Strip tracking prefixes from an audio URL"""
+        _, sep, path = url.partition("mcdn.podbean.com")
+        if sep:
+           return "".join(("https://", sep, path))
+        return url
+
     def _init(self):
         # strip the prefix (if present)
         no, _, url = self.url.partition("podbean:")
@@ -104,6 +112,15 @@ class PodbeanFeedExtractor(Extractor):
             self.log.warning(
                 "Dumping response is not supported for this extractor")
             self._write_pages = False
+
+        # opportunistically use youtube-dl or yt-dlp's function instead
+        # of our own, rudimentary implementation
+        try:
+            ytdl_module = ytdl.import_module(None)
+            self._clean_url = ytdl_module.utils.clean_podcast_url
+        except (ImportError, AttributeError) as e:
+            self.log.debug(
+                "Falling back to basic tracking prefix removal (%s)", e)
 
         # by default, the Python implementation of XMLParser is shadowed by
         # the C implementation; we undo this to be able get the original
@@ -254,12 +271,7 @@ class PodbeanFeedExtractor(Extractor):
 
             # /mf/web/ is basically the same as /mf/download/, the
             # only difference is the 'content-disposition' header
-            url = data["enclosure"]["url"]
-            # strip the prefix (chrt.fm, pcdn.co, etc.), since these domains
-            # send 302s anyway
-            _, sep, path = url.partition("mcdn.podbean.com")
-            if sep:
-                url = "".join(("https://", sep, path))
+            url = self._clean_url(data["enclosure"]["url"])
             text.nameext_from_url(url, data)
             # data["episode_id"] = url.split("/")[-2]
             audio = data.pop("enclosure")
