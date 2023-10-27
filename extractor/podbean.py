@@ -101,7 +101,7 @@ class PodbeanFeedExtractor(Extractor):
         """Strip tracking prefixes from an audio URL"""
         _, sep, path = url.partition("mcdn.podbean.com")
         if sep:
-           return "".join(("https://", sep, path))
+            return "".join(("https://", sep, path))
         return url
 
     def _init(self):
@@ -156,6 +156,7 @@ class PodbeanFeedExtractor(Extractor):
     @staticmethod
     def prepare_metadata(metadata):
         """Adjust the content of `data`"""
+        metadata["__modified"] = {}
         if "date" in metadata:
             metadata["date"] = text.parse_datetime(
                 metadata["pubDate"], "%a, %d %b %Y %H:%M:%S %z")
@@ -184,6 +185,7 @@ class PodbeanFeedExtractor(Extractor):
     @staticmethod
     def prepare_item(item):
         """Adjust the content of `item`"""
+        item["__modified"] = {}
         item["date"] = text.parse_datetime(
             item["pubDate"], "%a, %d %b %Y %H:%M:%S %z")
         item["enclosure"]["length"] = text.parse_int(
@@ -223,6 +225,14 @@ class PodbeanFeedExtractor(Extractor):
 
         raise exception.HttpError(msg, response)
 
+    @staticmethod
+    def _delegate_url(kwds, getter):
+        """Workaround for gallery-dl#4725"""
+        try:
+            return getter(kwds["__modified"])
+        except KeyError:
+            return getter(kwds)
+
     def items(self):
         # XXX: this might break if the site switches to Cloudflare
         # in the future
@@ -243,16 +253,17 @@ class PodbeanFeedExtractor(Extractor):
             channel_metadata, get_key=_get_key_metadata, extr=_extr_metadata)
         self.prepare_metadata(metadata)
         if self.config("podcast-logo", True) and "itunes_image" in metadata:
-            url = metadata["itunes_image"]
-            data = text.nameext_from_url(url)
+            data = metadata.copy()
             if "image" in metadata:
                 image = metadata["image"]
                 for key in ("width", "height"):
                     if key in image:
                         data[key] = image[key]
 
-            data.update(metadata)
             yield Message.Directory, data
+
+            url = self._delegate_url(metadata, lambda x: x["itunes_image"])
+            text.nameext_from_url(url, data)
             yield Message.Url, url, data
 
         episode_image = self.config("episode-logo", True)
@@ -265,13 +276,14 @@ class PodbeanFeedExtractor(Extractor):
             yield Message.Directory, data
 
             if episode_image and "itunes_image" in data:
-                url = data["itunes_image"]
+                url = self._delegate_url(data, lambda x: x["itunes_image"])
                 text.nameext_from_url(url, data)
                 yield Message.Url, url, data
 
             # /mf/web/ is basically the same as /mf/download/, the
             # only difference is the 'content-disposition' header
-            url = self._clean_url(data["enclosure"]["url"])
+            url = self._clean_url(
+                self._delegate_url(data, lambda x: x["enclosure"]["url"]))
             text.nameext_from_url(url, data)
             # data["episode_id"] = url.split("/")[-2]
             audio = data.pop("enclosure")
