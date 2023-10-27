@@ -191,9 +191,11 @@ class PodbeanFeedExtractor(Extractor):
         item["enclosure"]["length"] = text.parse_int(
             item["enclosure"]["length"])
 
-        if "media_content" in item and \
-                item["media_content"]["medium"] == "image":
-            item["itunes_image"] = item.pop("media_content")["url"]
+        try:
+            if item["media_content"]["medium"] == "image":
+                item["itunes_image"] = item.pop("media_content")["url"]
+        except KeyError:
+            pass
 
         for key in ("itunes_episode", "itunes_season"):
             if key in item:
