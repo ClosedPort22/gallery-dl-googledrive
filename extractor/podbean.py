@@ -5,6 +5,7 @@
 from gallery_dl.extractor.common import Extractor, Message
 from gallery_dl import text, exception, ytdl
 from requests import exceptions as rexc
+from operator import itemgetter
 
 
 class PodbeanFeedExtractor(Extractor):
@@ -251,6 +252,8 @@ class PodbeanFeedExtractor(Extractor):
             else:
                 channel_metadata.append(child)
 
+        image_getter = itemgetter("itunes_image")
+
         metadata = _elements_to_dict(
             channel_metadata, get_key=_get_key_metadata, extr=_extr_metadata)
         self.prepare_metadata(metadata)
@@ -264,11 +267,14 @@ class PodbeanFeedExtractor(Extractor):
 
             yield Message.Directory, data
 
-            url = self._delegate_url(metadata, lambda x: x["itunes_image"])
+            url = self._delegate_url(metadata, image_getter)
             text.nameext_from_url(url, data)
             yield Message.Url, url, data
 
         episode_image = self.config("episode-logo", True)
+
+        def audio_getter(obj):
+            return obj["enclosure"]["url"]
 
         for item in items:
             data = _elements_to_dict(
@@ -278,14 +284,13 @@ class PodbeanFeedExtractor(Extractor):
             yield Message.Directory, data
 
             if episode_image and "itunes_image" in data:
-                url = self._delegate_url(data, lambda x: x["itunes_image"])
+                url = self._delegate_url(data, image_getter)
                 text.nameext_from_url(url, data)
                 yield Message.Url, url, data
 
             # /mf/web/ is basically the same as /mf/download/, the
             # only difference is the 'content-disposition' header
-            url = self._clean_url(
-                self._delegate_url(data, lambda x: x["enclosure"]["url"]))
+            url = self._clean_url(self._delegate_url(data, audio_getter))
             text.nameext_from_url(url, data)
             # data["episode_id"] = url.split("/")[-2]
             audio = data.pop("enclosure")
