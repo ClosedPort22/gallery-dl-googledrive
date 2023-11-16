@@ -5,6 +5,7 @@
 from gallery_dl.extractor.common import Extractor, Message
 from gallery_dl import text, exception, ytdl
 from requests import exceptions as rexc
+from urllib3.exceptions import HTTPError as UrllibHTTPError
 from operator import itemgetter
 
 
@@ -210,7 +211,8 @@ class PodbeanFeedExtractor(Extractor):
         while True:
             try:
                 return ET.parse(raw)
-            except (rexc.ConnectionError,
+            except (UrllibHTTPError,
+                    rexc.ConnectionError,
                     rexc.Timeout,
                     rexc.ChunkedEncodingError,
                     rexc.ContentDecodingError) as exc:
