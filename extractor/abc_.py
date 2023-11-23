@@ -6,7 +6,6 @@ from gallery_dl.extractor.common import Extractor, Message
 from gallery_dl import text, util, exception
 from functools import reduce
 from operator import getitem
-import itertools
 
 
 LISTEN_PATTERN = (
@@ -319,7 +318,7 @@ class AbcIviewSeriesExtractor(AbcIviewExtractor):
 
         data["_extractor"] = AbcIviewVideoExtractor
         # use --chapter-filter to exclude videoExtras
-        for video in itertools.chain.from_iterable(
+        for video in _smart_chain_from_iterable(
                 response["_embedded"].values()):
             data.update(video)
             # 'shareUrl' is unreliable
@@ -344,7 +343,8 @@ class AbcIviewProgramExtractor(AbcIviewExtractor):
         # single-video program
         ("https://iview.abc.net.au/show/kangaroo-beach-summer-special", {
             "count": 1,
-            "pattern": r"^https://iview\.abc\.net\.au/video/CH2105H001S00$"
+            "pattern": r"^https://iview\.abc\.net\.au/video/CH2105H001S00$",
+            "keyword": {"houseNumber": "CH2105H001S00"},
         }),
         ("https://iview.abc.net.au/show/dictionary/"),
         ("https://iview.abc.net.au/show/dictionary/foo/bar"),
@@ -373,13 +373,24 @@ class AbcIviewProgramExtractor(AbcIviewExtractor):
         else:
             # single-video program
             data["_extractor"] = AbcIviewVideoExtractor
-            url = "https://iview.abc.net.au/video/" + \
-                pd["_embedded"].pop("highlightVideo")["id"]
-            yield Message.Queue, url, data
+            for video in _smart_chain_from_iterable(pd["_embedded"].values()):
+                data.update(video)
+                url = "https://iview.abc.net.au/video/" + video["id"]
+                yield Message.Queue, url, data
 
 
 ###############################################################################
 # Helper functions ############################################################
+
+
+def _smart_chain_from_iterable(iterable):
+    """Yield nested `dict`s in `iterable`"""
+    # ({}, [{}, {}], {}) -> ({}, {}, {}, {})
+    for item in iterable:
+        if isinstance(item, dict):
+            yield item
+        else:  # assume nested iterable
+            yield from item
 
 
 def _try_retrieve(obj, paths, default=None):
