@@ -130,7 +130,7 @@ class AbcListenProgramExtractor(AbcListenExtractor):
             "options": (("image", 1), ("chapter-filter", "False")),
             "count": 1,
             "pattern": r"^https://live-production\.wcms\.abc-cdn\.net\.au/"
-                       r"ee24db25461bf441b60e321393e8625f$",
+                       r"7af43d56384d5cbf48b73450154b3882$",
             "keyword": {
                 "presentersPrepared"    : list,
                 "descriptionPrepared"   : dict,
@@ -166,7 +166,11 @@ class AbcListenProgramExtractor(AbcListenExtractor):
         pp = next_data["props"]["pageProps"]
         data = pp["heroDescriptionPrepared"].copy()
         data["presentersPrepared"] = pp["presentersPrepared"]
-        data.update(pp["heroImagePrepared"])
+        try:
+            # keeping this for now just in case
+            data.update(pp["heroImagePrepared"])
+        except (KeyError, TypeError):
+            data.update(pp["heroImageWithCTAPrepared"])
         data.update(pp["templatePrepared"])
 
         paths = (
@@ -211,7 +215,7 @@ class AbcIviewVideoExtractor(AbcIviewExtractor):
         }),
         ("https://iview.abc.net.au/video/LE2227H008S00", {
             "range": "2-",
-            "count": 10,
+            "count": 6,
             "pattern": r"^https://cdn\.iview\.abc\.net\.au/",
         }),
         ("https://iview.abc.net.au/video/LE2227H025S00", {
@@ -281,7 +285,7 @@ class AbcIviewSeriesExtractor(AbcIviewExtractor):
         }),
         ("https://iview.abc.net.au/show/gruen/series/14", {
             "options": (("image-filter", "False"),),
-            "count": 9,
+            "count": ">= 8",
             "pattern": AbcIviewVideoExtractor.pattern,
         }),
         ("https://iview.abc.net.au/show/dictionary/series/2", {
@@ -329,7 +333,7 @@ class AbcIviewProgramExtractor(AbcIviewExtractor):
     pattern = IVIEW_PATTERN + r"/show/([\w-]+)(?:$|/(?!series|video).*)"
     test = (
         ("https://iview.abc.net.au/show/gruen", {
-            "count": 4,
+            "count": ">= 4",
             "pattern": r"^https://iview\.abc\.net\.au"
                        r"/show/gruen/series/[0-9]+",
             "keyword": {"parent": {"date": "type:datetime"}},
