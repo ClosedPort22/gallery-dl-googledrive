@@ -1,1 +1,1 @@
-gallery_dl
+gallery_dl>=1.26.0
