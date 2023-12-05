@@ -21,11 +21,13 @@ class BhadooFolderExtractor(BhadooExtractor):
     directory_fmt = ("{category}", "{path[0]:?//}", "{path[1]:?//}",
                      "{path[2]:?//}", "{path[3:]:J - /}")
     filename_fmt = "{id[:8]}_{filename}.{extension}"
-    pattern = BASE_PATTERN + r"(.+)?"
+    pattern = BASE_PATTERN + r"(?:$|/(.+)?)"
     test = (
+        ("bhadoo:https://example.org"),
         ("bhadoo:https://example.org/"),
         ("bhadoo:https://example.org/0:/"),
         ("bhadoo:https://example.org/foo/bar/"),
+        ("bhadoo:https://example.org/fallback?id=foo"),
         ("bhadoo:example.org/"),
     )
 
@@ -34,10 +36,25 @@ class BhadooFolderExtractor(BhadooExtractor):
     def __init__(self, match):
         BaseExtractor.__init__(self, match)
         path = match.group(match.lastindex)
+        self.id = ""
+        self.base_path = ()
+        self._drive_order = 0
         if path:
-            self.base_path = tuple(text.unquote(path.strip("/")).split("/"))
-        else:
-            self.base_path = ()
+            if path.startswith("fallback?"):
+                # id-based
+                self.id = text.extr(path + "&", "id=", "&")
+            else:
+                # path-based
+                self.base_path = tuple(
+                    text.unquote(path.strip("/")).split("/"))
+        # else: path-based, starts from root
+
+    def _init(self):
+        if self.id:
+            # make a request to the webpage to determine the drive number
+            self._drive_order = text.parse_int(text.extr(
+                self.request(self.url).text,
+                "current_drive_order", ";").strip(" ="))
 
     @staticmethod
     def prepare(file):
@@ -56,17 +73,21 @@ class BhadooFolderExtractor(BhadooExtractor):
 
     def items(self):
         self.api = BhadooAPI(self)
-        return self.files(self.base_path)
+        return self.files(self.base_path, self.id)
 
-    def files(self, parent_path, parent_data=None):
+    def files(self, parent_path, id="", parent_data=None):
         """Recursively yield files in a folder"""
         folder_data = {"parent": parent_data, "path": parent_path}
         yield Message.Directory, folder_data
 
         folders = []
+        if id:
+            endpoint = "/{}:fallback".format(self._drive_order)
+        else:
+            endpoint = "/{}/".format("/".join(parent_path))
+
         # remove trailing slash to download as ZIP
-        for file in self.api.folder_content(
-                "/{}/".format("/".join(parent_path))):
+        for file in self.api.folder_content(endpoint, id=id):
             self.prepare(file)
             if file["mimeType"] == self.FOLDER_MIME_TYPE:
                 folders.append(file)
@@ -83,7 +104,9 @@ class BhadooFolderExtractor(BhadooExtractor):
             yield Message.Url, url, file
 
         for folder in folders:
-            yield from self.files(parent_path + (folder["name"],), folder)
+            yield from self.files(
+                parent_path + (folder["name"],), id=folder.get("id") or "",
+                parent_data=folder)
 
 
 class BhadooAPI():
