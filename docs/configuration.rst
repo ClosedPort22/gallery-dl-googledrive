@@ -57,6 +57,18 @@ Description
     It is possible to use "all" instead of listing all values separately.
 
 
+extractor.bhadoo.path
+---------------------
+Type
+    ``bool``
+Default
+    ``false``
+Description
+    Try to fetch (base) path if an object is path-less.
+
+    Note: This requires 1 additional HTTP request per directory or file.
+
+
 extractor.disneyplus.region
 ---------------------------
 Type
