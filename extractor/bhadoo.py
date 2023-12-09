@@ -9,7 +9,6 @@ from gallery_dl import text
 class BhadooExtractor(BaseExtractor):
     """Base class for Bhadoo extractors"""
     basecategory = "bhadoo"
-    subcategory = "folder"
     archive_fmt = "{id}"
     directory_fmt = ("{category}", "{path[0]:?//}", "{path[1]:?//}",
                      "{path[2]:?//}", "{path[3:]:J - /}")
@@ -103,6 +102,7 @@ BASE_PATTERN = BhadooExtractor.update({})
 
 class BhadooFolderExtractor(BhadooExtractor):
     """Extractor for a folder"""
+    subcategory = "folder"
     pattern = BASE_PATTERN + r"(?:/?$|/((?!\d+:search).+))"
     test = (
         ("bhadoo:https://example.org"),
@@ -142,6 +142,7 @@ class BhadooFolderExtractor(BhadooExtractor):
 
 class BhadooSearchExtractor(BhadooExtractor):
     """Extractor for search results"""
+    subcategory = "search"
     pattern = BASE_PATTERN + r"/(\d+):search\?q=(.+)"
     test = (
         ("bhadoo:https://example.org/0:search?q=a"),
