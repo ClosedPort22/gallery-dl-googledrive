@@ -26,8 +26,7 @@ class BhadooExtractor(BaseExtractor):
     def _init(self):
         self._fetch_path = self.config("path", False)
 
-    @staticmethod
-    def prepare(file):
+    def prepare(self, file):
         """Adjust the content of a file or folder object"""
         file["date"] = text.parse_datetime(
             file["modifiedTime"], "%Y-%m-%dT%H:%M:%S.%f%z")
@@ -40,7 +39,7 @@ class BhadooExtractor(BaseExtractor):
                 file["filename"] = file["name"][:-len(ext)-1]
             else:
                 file["filename"] = file["name"]
-        else:
+        elif file.get("mimeType") != self.FOLDER_MIME_TYPE:
             text.nameext_from_url(file["name"], file)
 
     def items(self):
