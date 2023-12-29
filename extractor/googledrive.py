@@ -290,7 +290,7 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
         return data
 
     def items(self):
-        yield from self.files(self.id, self.metadata(), ())
+        return self.files(self.id, self.metadata(), ())
 
     def files(self, id, parent_data, parent_path):
         """Recursively yield files in a folder"""
@@ -357,10 +357,10 @@ GET {path}?{query_params} HTTP/1.1\r
 \r
 --{boundary_marker}\r
 """
+    _find_json = re.compile("(?s)[^{]+(.+})").match
 
     def __init__(self, extractor):
         self.request = extractor.request
-        self._find_json = re.compile("(?s)[^{]+(.+})").match
 
     def folder_content(self, folder_id, resource_key=None):
         """Yield folder content (including subfolders)"""
