@@ -21,8 +21,9 @@ class GoogledriveExtractor(Extractor):
                    "__Secure-1PSIDTS", "__Secure-3PSIDTS")
     root = "https://drive.google.com"
 
-    @staticmethod
-    def prepare(file):
+    FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
+
+    def prepare(self, file):
         """Adjust the content of a file or folder object"""
         file["date"] = text.parse_datetime(
             file["modifiedDate"], "%Y-%m-%dT%H:%M:%S.%f%z")
@@ -37,6 +38,9 @@ class GoogledriveExtractor(Extractor):
                 file["filename"] = file["title"][:-len(ext)-1]
             else:
                 file["filename"] = file["title"]
+        elif file["mimeType"] != self.FOLDER_MIME_TYPE:
+            file["filename"] = file["title"]
+
         file["parents"] = [x["id"] for x in file.get("parents") or ()]
 
     def url_data(self, id, resource_key):
@@ -75,8 +79,7 @@ class GoogledriveFileExtractor(GoogledriveExtractor):
     subcategory = "file"
     pattern = BASE_PATTERN + \
         (r"/(?:(?:uc|open)\?(?:[\w=&]+&)?id=([\w-]+)|"
-         r"(?:file|presentation)/d/([\w-]+))"
-         r"(?:.*resourcekey=([\w-]+))?")  # optional 'resourcekey'
+         r"file/d/([\w-]+))(?:.*resourcekey=([\w-]+))?")  # optional rkey
     test = (
         ("https://drive.google.com/file/d/0B9P1L--7Wd2vU3VUVlFnbTgtS2c/view", {
             "pattern": r"^https://drive\.google\.com/uc\?export=download"
@@ -176,6 +179,114 @@ class GoogledriveFileExtractor(GoogledriveExtractor):
         yield Message.Url, url, data
 
 
+class GoogledriveDocsExtractor(GoogledriveExtractor):
+    """Base class for extractors for Google Docs"""
+    archive_fmt = "{id}.{extension}"
+    _FORMATS = ()
+    _default_formats = ("pdf",)
+
+    def __init__(self, match):
+        GoogledriveExtractor.__init__(self, match)
+        self.id = match.group(1)
+
+    def _init(self):
+        if self.config("metadata", False):
+            self.api = GoogledriveWebAPI(self)
+        else:
+            self.api = None
+
+        formats = self.config("format", self._default_formats) or ()
+        if formats == "all":
+            formats = self._FORMATS
+        elif isinstance(formats, str):
+            formats = formats.split(",")
+
+        self.formats = [fmt for fmt in formats if fmt in self._FORMATS]
+
+    def metadata(self):
+        if not self.api:
+            return {"id": self.id}
+        data = self.api.file_info(self.id)
+        self.prepare(data)
+        return data
+
+    def items(self):
+        yield Message.Directory, {}
+
+        metadata = self.metadata()
+        for fmt in self.formats:
+            metadata["extension"] = fmt
+            url = "https://docs.google.com/{}/export?format={}&id={}".format(
+                self.subcategory, fmt, self.id)
+            yield Message.Url, url, metadata
+
+
+class GoogledriveDocumentExtractor(GoogledriveDocsExtractor):
+    """Extractor for documents"""
+    subcategory = "document"
+    pattern = BASE_PATTERN + r"/document/d/([\w-]+)"
+    test = (
+        # 'resourcekey' does not apply to docs
+        # https://support.google.com/a/answer/10685032
+        ("https://docs.google.com/document/d"
+         "/14QBCFpWOCLxCzTmTHjm1c-ZGCLaIS9tToN8cAcuvXeI/edit", {
+             "count": 1,
+             "pattern": r"^https://docs\.google\.com/document/export",
+         }),
+        ("https://docs.google.com/document/d/"
+         "1eqX_-SSIt9D3hdzI3WAnjgXGuIL2Qu0tpt0q9QCwLa4/edit", {
+             "options": (("format", "pdf"),),
+             "pattern": r"^https://docs\.google.com/document"
+             r"/export\?format=pdf",
+             "keyword": {"extension": "pdf"},
+         }),
+        ("https://docs.google.com/document/d/"
+         "1eqX_-SSIt9D3hdzI3WAnjgXGuIL2Qu0tpt0q9QCwLa4/edit", {
+             "options": (("format", "pdf,zip"),),
+             "count": 2,
+         }),
+        # request metadata
+        ("https://docs.google.com/document/d/"
+         "1eqX_-SSIt9D3hdzI3WAnjgXGuIL2Qu0tpt0q9QCwLa4/edit", {
+             "options": (("metadata", True),),
+             "keyword": {"date": "type:datetime"},
+         }),
+    )
+    _FORMATS = {"docx", "odt", "rtf", "pdf", "txt", "zip", "epub"}
+    _default_formats = ("docx",)
+
+
+class GoogledrivePresentationExtractor(GoogledriveDocsExtractor):
+    """Extractor for presentations"""
+    subcategory = "presentation"
+    pattern = BASE_PATTERN + r"/presentation/d/([\w-]+)"
+    # TODO: add support for downloading individual slides
+    test = (
+        ("https://docs.google.com/presentation/d"
+         "/1zzgVfhJ3Q5oBoFb7s8x3tn0NNeR7qLDIaqZVbDxqKrQ/edit", {
+             "count": 1,
+             "pattern": r"^https://docs\.google\.com/presentation/export",
+         }),
+    )
+    _FORMATS = {"pptx", "odp", "pdf", "txt"}
+    _default_formats = ("pptx",)
+
+
+class GoogledriveSpreadsheetsExtractor(GoogledriveDocsExtractor):
+    """Extractor for spreadsheets"""
+    subcategory = "spreadsheets"
+    pattern = BASE_PATTERN + r"/spreadsheets/d/([\w-]+)"
+    test = (
+        ("https://docs.google.com/spreadsheets/d/"
+         "1pdu_X2tR4ztF6_HLtJ-Dc4ZcwUdt6fkCjpnXxAEFlyA/edit", {
+             "count": 1,
+             "pattern": r"^https://docs\.google\.com/spreadsheets/export",
+         })
+    )
+    _FORMATS = {"xlsx", "ods", "pdf", "zip", "csv", "tsv"}
+    _default_formats = ("xlsx",)
+
+
 class GoogledriveFolderExtractor(GoogledriveExtractor):
     """Extractor for Google Drive folders"""
     subcategory = "folder"
@@ -200,9 +311,9 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
         ("https://drive.google.com/drive/folders/"
          "0B2SJp-WVjVPrb25NNXRWbWtCYWs?"
          "resourcekey=0-G_0dVFn0W27KPOlQt731Wg", {
+             "options": (("chapter-filter", "False"),),
              "pattern": r"^https://drive\.google\.com/uc\?export=download"
                         r"&id=[\w-]+&resourcekey=&confirm=t$",
-             "range": "2",
              "count": 1,
              "keyword": {"parent": {
                  "id": "0B2SJp-WVjVPrb25NNXRWbWtCYWs",
@@ -213,15 +324,18 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
         ("https://drive.google.com/drive/folders/"
          "0B5AjhfOF0uKGYUQxX3J2dkt4RkE?"
          "resourcekey=0-_DWxgrD5dHZogiqzo3q5lw", {
-             # TODO: The first file is a text document
-             # * doesn't have'fileExtension' field
-             # * 'googleusercontent.com' always returns
-             #   '500 Internal Server Error'
-             # * can be exported to multiple formats
              "range": "2",
              "pattern": r"^https://drive\.google\.com/uc\?export=download"
-                        r"&id=0B5AjhfOF0uKGNnVWLTlrNFM3MDA&resourcekey="
-                        r"0-lCgPINsP-OoZx9hhQDAoyQ&confirm=t$",
+                        r"&id=[\w-]+&resourcekey=[\w-]+&confirm=t$",
+         }),
+        # document
+        ("https://drive.google.com/drive/folders/"
+         "0B5AjhfOF0uKGYUQxX3J2dkt4RkE?"
+         "resourcekey=0-_DWxgrD5dHZogiqzo3q5lw", {
+             "options": (("image-filter", "False"),),
+             "range": "1",
+             "count": 1,
+             "pattern": r"^https://docs\.google\.com/document/d/",
          }),
         # request metadata for base folder
         ("https://drive.google.com/drive/folders/"
@@ -272,7 +386,14 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
          "1gd3xLkmjT8IckN6WtMbyFZvLR4exRIkn"),
     )
 
-    FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
+    _extr_by_mimetype = {
+        "application/vnd.google-apps.document":
+        GoogledriveDocumentExtractor,
+        "application/vnd.google-apps.spreadsheet":
+        GoogledriveSpreadsheetsExtractor,
+        "application/vnd.google-apps.presentation":
+        GoogledrivePresentationExtractor,
+    }.get
 
     def __init__(self, match):
         GoogledriveExtractor.__init__(self, match)
@@ -300,11 +421,23 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
         yield Message.Directory, folder_data
 
         for file in self.api.folder_content(id, self.resource_key):
+            mimetype = file["mimeType"]
             self.prepare(file)
-            if file["mimeType"] == self.FOLDER_MIME_TYPE:
+            if mimetype == self.FOLDER_MIME_TYPE:
                 # trust 'orderBy'
                 yield from self.files(file["id"], file, path)
                 continue
+
+            child_extr = self._extr_by_mimetype(mimetype)
+            if child_extr:
+                data = file.copy()
+                data.update(folder_data)
+                data["_extractor"] = child_extr
+                url = "https://docs.google.com/{}/d/{}".format(
+                    child_extr.subcategory, file["id"])
+                yield Message.Queue, url, data
+                continue
+
             url, data = self.url_data(
                 file["id"], file.get("resourceKey") or "")
             data.update(folder_data)

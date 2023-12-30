@@ -145,6 +145,62 @@ Description
     Fetch metadata for the file. This requires 1 API request per file.
 
 
+extractor.googledrive.document.metadata
+---------------------------------------
+extractor.googledrive.spreadsheets.metadata
+-------------------------------------------
+extractor.googledrive.presentation.metadata
+-------------------------------------------
+Type
+    ``bool``
+Default
+    ``false``
+Description
+    Fetch metadata for the document. This requires 1 API request per document.
+
+
+extractor.googledrive.document.format
+-------------------------------------
+Type
+    * ``string``
+    * ``list`` of ``string``s
+Default
+    ``docx``
+Description
+    Specifies which format(s) to download. Available formats are
+    ``docx``, ``odt``, ``rtf``, ``pdf``, ``txt``, ``zip``, and ``epub``.
+
+    It is possible to use "all" instead of listing all values separately.
+
+
+extractor.googledrive.spreadsheets.format
+-----------------------------------------
+Type
+    * ``string``
+    * ``list`` of ``string``s
+Default
+    ``xlsx``
+Description
+    Specifies which format(s) to download. Available formats are
+    ``xlsx``, ``ods``, ``pdf``, ``zip``, ``csv``, and ``tsv``.
+
+    It is possible to use "all" instead of listing all values separately.
+
+
+extractor.googledrive.presentation.format
+-----------------------------------------
+Type
+    * ``string``
+    * ``list`` of ``string``s
+Default
+    ``pptx``
+Description
+    Specifies which format(s) to download. Available formats are
+    ``pptx``, ``odp``, ``pdf``, and ``txt``.
+
+    It is possible to use "all" instead of listing all values separately.
+
+
 extractor.mediafire.folder.metadata
 -----------------------------------
 Type
