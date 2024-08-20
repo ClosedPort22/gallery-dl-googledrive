@@ -52,9 +52,7 @@ class WetransferFileExtractor(Extractor):
             return url
 
         headers = {"Content-Type": "application/json"}
-        data = {"_http_method"  : "POST",
-                "_http_headers" : headers,
-                "_http_validate": _validate}
+        data = {"_http_validate": _validate}
         post_data = {"security_hash": self.security_hash,
                      "intent"       : "single_file"}
 
@@ -73,7 +71,11 @@ class WetransferFileExtractor(Extractor):
             self.prepare(item)
             data.update(item)
             post_data["file_ids"] = (data["file_id"],)
-            data["_http_data"] = util.json_dumps(post_data)
+            data.update({
+                "_http_method" : "POST",
+                "_http_headers": headers,
+                "_http_data"   : util.json_dumps(post_data),
+            })
             yield Message.Url, api_url, data
 
 
