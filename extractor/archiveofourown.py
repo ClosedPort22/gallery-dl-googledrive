@@ -358,7 +358,7 @@ class ArchiveofourownSeriesExtractor(ArchiveofourownExtractor):
                 value = text.extr(value, ">", "<")
             elif key == "Complete":
                 key = "is_completed"
-                value = True if value.strip().lower() == "yes" else False
+                value = (value.strip().lower() == "yes")
             elif key == "Description":
                 value = text.extr(
                     value, '<blockquote class="userstuff">', "</blockquote>")

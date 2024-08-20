@@ -281,7 +281,7 @@ class GoogledriveSpreadsheetsExtractor(GoogledriveDocsExtractor):
          "1pdu_X2tR4ztF6_HLtJ-Dc4ZcwUdt6fkCjpnXxAEFlyA/edit", {
              "count": 1,
              "pattern": r"^https://docs\.google\.com/spreadsheets/export",
-         })
+         }),
     )
     _FORMATS = {"xlsx", "ods", "pdf", "zip", "csv", "tsv"}
     _default_formats = ("xlsx",)

@@ -176,7 +176,7 @@ class PodbeanFeedExtractor(Extractor):
         # older python versions
         # ref: https://docs.python.org/3/library/xml.etree.elementtree.html
         for key, value in metadata.items():
-            if not key[0] == "itunes_category":
+            if key[0] != "itunes_category":
                 continue
             categories.append(" - ".join(_flatten(key, value)))
             remove.append(key)
