@@ -16,6 +16,12 @@ class ArchiveofourownExtractor(Extractor):
     root = "https://archiveofourown.org"
     cookies_domain = ".archiveofourown.org"
 
+    @staticmethod
+    def _strip_html(html):
+        stripped = text.rextract(html, ">", "<")[0] or \
+            html.rpartition(">")[-1]
+        return stripped.strip("\n")
+
 
 class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
     """Extractor for AO3 stories"""
@@ -55,7 +61,7 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
                     "PDF"        : r"re:\.pdf\?updated_at=\d+$",
                 },
                 "extension"      : "epub",
-                "filename"       : "Summer Storm",
+                "filename"       : "Summer_Storm",
                 "title"          : "Summer Storm",
                 "is_completed"   : True,
                 "summary": "<p>Teyla is hurt. Rodney is her comfort.</p>",
@@ -73,7 +79,7 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
         ("https://archiveofourown.org/works/49129429", {
             "keyword": {"chapters": {
                 "123953188": "1. Prologue",
-                "124027732": "2. Chapter 2",
+                "124027732": "2. Part One",
                 "124030549": "3. Chapter 3",
                 "124108393": "4. Chapter 4",
                 "124928227": "5. Chapter 5",
@@ -86,6 +92,7 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
             "keyword": {"title": "Badge & O'Possum: Ace Attorneys"},
         }),
         # could have adult content (not rated)
+        # XXX: only works in browsers as of 2024-09-16
         ("https://archiveofourown.org/works/30290274", {
             "options": (("view-adult", 0),),
             "count": 0,
@@ -117,11 +124,6 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
 
     def metadata(self, page):
         """Get metadata from webpage"""
-        def strip_html(html):
-            stripped = text.rextract(html, ">", "<")[0] or \
-                html.rpartition(">")[-1]
-            return stripped.strip("\n")
-
         numerical = ("Words", "Comments", "Kudos", "Bookmarks", "Hits")
         date = ("Published", "Updated", "Completed")
 
@@ -158,7 +160,7 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
                 # flatten stats
                 group = group.rpartition('<dt class="')[-1]
 
-            key = strip_html(text.extr(group, ">", "</dt>").strip(":\n"))
+            key = self._strip_html(text.extr(group, ">", "</dt>").strip(":\n"))
 
             if key == "Collections":
                 extr = text.extract_from(group)
@@ -174,13 +176,13 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
                 meta[key] = pos + name
                 meta["series_name"] = name
             else:
-                tags = tuple(text.unescape(strip_html(html)) for html in
+                tags = tuple(text.unescape(self._strip_html(html)) for html in
                              text.extract_iter(group, "<a class=", "</a>"))
                 if tags:
                     meta[key] = tags
                 else:
                     # parse int
-                    value = strip_html(group)
+                    value = self._strip_html(group)
                     if key in numerical:
                         meta[key] = text.parse_int(value.replace(",", ""))
                     # parse date
@@ -335,24 +337,19 @@ class ArchiveofourownSeriesExtractor(ArchiveofourownExtractor):
         """Get metadata from series page"""
         extr = text.extract_from(page)
 
-        numerical = ("Words", "Bookmarks", "Works")
-        date = ("Series Begun", "Series Updated")
-
         meta = {
             "id"  : self.id,
             "name": text.unescape(extr(
                 '<h2 class="heading">', "</h2>")).strip(),
         }
 
-        groups = extr('<dl class="series meta group">', "</div")
+        groups = extr('<dl class="series meta group">', "</div>")
         for key, value in zip(
             text.extract_iter(groups, "<dt>", "</dt>"),
             text.extract_iter(groups, "<dd>", "</dd>"),
         ):
             key = key.rstrip(":")
-            if key == "Bookmarks":
-                value = text.extr(value, ">", "<")
-            elif key == "Creator":
+            if key == "Creator":
                 meta["creator_url"] = \
                     self.root + text.extr(value, 'href="', '"')
                 value = text.extr(value, ">", "<")
@@ -363,14 +360,20 @@ class ArchiveofourownSeriesExtractor(ArchiveofourownExtractor):
                 value = text.extr(
                     value, '<blockquote class="userstuff">', "</blockquote>")
 
-            if key in numerical:
-                value = text.parse_int(value.replace(",", ""))
-
-            if key in date:
+            if key in ("Series Begun", "Series Updated"):
                 meta[key.lower().replace(" ", "_")+"_date"] = \
                     text.parse_datetime(value, format="%Y-%m-%d")
 
             meta[key] = value
+
+        stats = text.extr(groups, '<dl class="stats">', "</dl>")
+        for key, value in zip(
+            text.extract_iter(stats, "<dt", "</dt>"),
+            text.extract_iter(stats, "<dd", "</dd>"),
+        ):
+            key = self._strip_html(key).rstrip(":")
+            meta[key] = text.parse_int(value.replace(",", ""))
+
         return meta
 
     def items(self):
