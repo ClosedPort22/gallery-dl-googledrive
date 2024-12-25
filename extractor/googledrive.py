@@ -62,8 +62,8 @@ class GoogledriveExtractor(Extractor):
 
             return False
 
-        url = "{}/uc?export=download&id={}&resourcekey={}&confirm=t".format(
-            self.root, id, resource_key)
+        url = ("https://drive.usercontent.google.com/download?export=download"
+               "&id={}&resourcekey={}&confirm=t").format(id, resource_key)
         data = {
             "id"            : id,
             "extension"     : "",
