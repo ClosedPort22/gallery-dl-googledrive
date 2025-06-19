@@ -18,7 +18,7 @@ class ArchiveofourownExtractor(Extractor):
 
     @staticmethod
     def _strip_html(html):
-        stripped = text.rextract(html, ">", "<")[0] or \
+        stripped = text.rextract(html, ">", "<", -1)[0] or \
             html.rpartition(">")[-1]
         return stripped.strip("\n")
 
@@ -160,7 +160,7 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
                 # flatten stats
                 group = group.rpartition('<dt class="')[-1]
 
-            key = self._strip_html(text.extr(group, ">", "</dt>").strip(":\n"))
+            key = self._strip_html(text.extr(group, ">", "</dt>").strip(":\n "))
 
             if key == "Collections":
                 extr = text.extract_from(group)
@@ -281,7 +281,7 @@ class ArchiveofourownTagExtractor(ArchiveofourownExtractor):
         while True:
             response = self.request(url, notfound="tag")
             txt = response.text
-            next = text.extr(txt, '<a rel="next" href="', '"')
+            next = text.extr(txt, '<li class="next"><a href="', '"')
             for id in text.extract_iter(txt, '<a href="/works/', '"'):
                 if id.isnumeric():
                     yield "{}/works/{}".format(self.root, id)
