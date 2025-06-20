@@ -2,25 +2,42 @@
 
 """Extractors for Archive of Our Own"""
 
-from gallery_dl.extractor.common import Extractor, Message, exception
+from gallery_dl.extractor.common import BaseExtractor, Message, exception
 from gallery_dl import text
 
 
-BASE_PATTERN = (r"(?:https?://)(?:archiveofourown\.(?:org|com|net)"
-                r"|(?:www\.)?ao3\.org)")
-
-
-class ArchiveofourownExtractor(Extractor):
+class ArchiveofourownExtractor(BaseExtractor):
     """Base class for AO3 extractors"""
-    category = "archiveofourown"
-    root = "https://archiveofourown.org"
-    cookies_domain = ".archiveofourown.org"
+    basecategory = "archiveofourown"
+
+    def initialize(self):
+        self.cookies_domain = "." + self.root.rpartition("/")[2]
+        BaseExtractor.initialize(self)
 
     @staticmethod
     def _strip_html(html):
         stripped = text.rextract(html, ">", "<", -1)[0] or \
             html.rpartition(">")[-1]
         return stripped.strip("\n")
+
+
+# ref: https://github.com/JimmXinu/FanFicFare/wiki/ProblematicSites
+BASE_PATTERN = ArchiveofourownExtractor.update({
+    # main site
+    "archiveofourown_org": {
+        "root"   : "https://archiveofourown.org",
+        "pattern": r"archiveofourown\.(?:org|com|net)|(?:www\.)?ao3\.org"
+    },
+    # official mirrors
+    "archiveofourown_gay": {
+        "root"   : "https://archiveofourown.gay",
+        "pattern": r"archiveofourown\.gay",
+    },
+    "archive_transformativeworks_org": {
+        "root"   : "https://archive.transformativeworks.org",
+        "pattern": r"archive\.transformativeworks\.org",
+    },
+})
 
 
 class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
@@ -160,7 +177,8 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
                 # flatten stats
                 group = group.rpartition('<dt class="')[-1]
 
-            key = self._strip_html(text.extr(group, ">", "</dt>").strip(":\n "))
+            key = self._strip_html(
+                text.extr(group, ">", "</dt>").strip(":\n "))
 
             if key == "Collections":
                 extr = text.extract_from(group)
