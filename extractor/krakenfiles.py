@@ -72,7 +72,7 @@ class KrakenfilesFileExtractor(Extractor):
             return "https://krakenfiles.com/download/" + hash
 
         data["_http_validate"] = _validate
-        yield Message.Directory, data
+        yield Message.Directory, "", data
         yield Message.Url, self.url, data
 
 

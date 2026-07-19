@@ -155,12 +155,11 @@ class PodbeanFeedExtractor(Extractor):
 
         expat.ParserCreate = ParserCreatePatched
 
-    @staticmethod
-    def prepare_metadata(metadata):
+    def prepare_metadata(self, metadata):
         """Adjust the content of `data`"""
         metadata["__modified"] = {}
         if "date" in metadata:
-            metadata["date"] = text.parse_datetime(
+            metadata["date"] = self.parse_datetime(
                 metadata["pubDate"], "%a, %d %b %Y %H:%M:%S %z")
         if "ttl" in metadata:
             metadata["ttl"] = text.parse_int(metadata["ttl"])
@@ -184,11 +183,10 @@ class PodbeanFeedExtractor(Extractor):
             del metadata[key]
         metadata["itunes_category"] = categories
 
-    @staticmethod
-    def prepare_item(item):
+    def prepare_item(self, item):
         """Adjust the content of `item`"""
         item["__modified"] = {}
-        item["date"] = text.parse_datetime(
+        item["date"] = self.parse_datetime(
             item["pubDate"], "%a, %d %b %Y %H:%M:%S %z")
         item["enclosure"]["length"] = text.parse_int(
             item["enclosure"]["length"])
@@ -267,7 +265,7 @@ class PodbeanFeedExtractor(Extractor):
                     if key in image:
                         data[key] = image[key]
 
-            yield Message.Directory, data
+            yield Message.Directory, "", data
 
             url = self._delegate_url(metadata, image_getter)
             text.nameext_from_url(url, data)
@@ -283,7 +281,7 @@ class PodbeanFeedExtractor(Extractor):
                 item, pred=_pred_item, extr=_extr_item)
             self.prepare_item(data)
             data["podcast"] = metadata
-            yield Message.Directory, data
+            yield Message.Directory, "", data
 
             if episode_image and "itunes_image" in data:
                 url = self._delegate_url(data, image_getter)

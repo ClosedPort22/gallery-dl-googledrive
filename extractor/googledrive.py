@@ -25,9 +25,9 @@ class GoogledriveExtractor(Extractor):
 
     def prepare(self, file):
         """Adjust the content of a file or folder object"""
-        file["date"] = text.parse_datetime(
+        file["date"] = self.parse_datetime(
             file["modifiedDate"], "%Y-%m-%dT%H:%M:%S.%f%z")
-        file["date_created"] = text.parse_datetime(
+        file["date_created"] = self.parse_datetime(
             file["createdDate"], "%Y-%m-%dT%H:%M:%S.%f%z")
 
         if "fileSize" in file:
@@ -175,7 +175,7 @@ class GoogledriveFileExtractor(GoogledriveExtractor):
         url, data = self.url_data(self.id, self.resource_key)
         data.update(self.metadata())
 
-        yield Message.Directory, data
+        yield Message.Directory, "", data
         yield Message.Url, url, data
 
 
@@ -211,7 +211,7 @@ class GoogledriveDocsExtractor(GoogledriveExtractor):
         return data
 
     def items(self):
-        yield Message.Directory, {}
+        yield Message.Directory, "", {}
 
         metadata = self.metadata()
         for fmt in self.formats:
@@ -418,7 +418,7 @@ class GoogledriveFolderExtractor(GoogledriveExtractor):
         path = parent_path + (parent_data.get("title") or parent_data["id"],)
 
         folder_data = {"parent": parent_data, "path": path}
-        yield Message.Directory, folder_data
+        yield Message.Directory, "", folder_data
 
         for file in self.api.folder_content(id, self.resource_key):
             mimetype = file["mimeType"]

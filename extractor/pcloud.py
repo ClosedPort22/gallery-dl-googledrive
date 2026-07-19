@@ -99,12 +99,11 @@ class PcloudShareExtractor(Extractor):
         """Return general metadata"""
         return {"code": self.code, "parent": {}}
 
-    @staticmethod
-    def prepare(file):
+    def prepare(self, file):
         """Adjust the content of a file or folder object"""
-        file["date"] = text.parse_datetime(
+        file["date"] = self.parse_datetime(
             file["modified"], "%a, %d %b %Y %H:%M:%S %z")
-        file["date_created"] = text.parse_datetime(
+        file["date_created"] = self.parse_datetime(
             file["created"], "%a, %d %b %Y %H:%M:%S %z")
 
     def commit(self, data):
@@ -129,7 +128,7 @@ class PcloudShareExtractor(Extractor):
         # the first element should never appear in the actual directory
         # structure
         data["path"] = path[1:]
-        yield Message.Directory, data
+        yield Message.Directory, "", data
 
         folders = []
         for item in items:

@@ -168,7 +168,7 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
             downloads[name] = url
         meta["downloads"] = downloads
         meta["updated_at"] = updated_at
-        meta["updated_at_date"] = text.parse_timestamp(updated_at)
+        meta["updated_at_date"] = self.parse_timestamp(updated_at)
 
         # general metadata
         meta_group = extr_page('<dl class="work meta group">', '</dl>')
@@ -206,7 +206,7 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
                     # parse date
                     elif key in date:
                         meta[key.lower()+"_date"] = \
-                            text.parse_datetime(value, format="%Y-%m-%d")
+                            self.parse_datetime_iso(value)
                         meta[key] = value
                     else:
                         meta[key] = value
@@ -250,7 +250,7 @@ class ArchiveofourownWorkExtractor(ArchiveofourownExtractor):
                 "challenge and will be revealed soon")
         metadata = self.metadata(response.text)
 
-        yield Message.Directory, metadata
+        yield Message.Directory, "", metadata
 
         types = self.config("format", "epub")
         if types == "all":
@@ -380,7 +380,7 @@ class ArchiveofourownSeriesExtractor(ArchiveofourownExtractor):
 
             if key in ("Series Begun", "Series Updated"):
                 meta[key.lower().replace(" ", "_")+"_date"] = \
-                    text.parse_datetime(value, format="%Y-%m-%d")
+                    self.parse_datetime_iso(value)
 
             meta[key] = value
 

@@ -28,7 +28,7 @@ class BhadooExtractor(BaseExtractor):
 
     def prepare(self, file):
         """Adjust the content of a file or folder object"""
-        file["date"] = text.parse_datetime(
+        file["date"] = self.parse_datetime(
             file["modifiedTime"], "%Y-%m-%dT%H:%M:%S.%f%z")
 
         if "size" in file:
@@ -60,7 +60,7 @@ class BhadooExtractor(BaseExtractor):
         if not parent_path and id and self._fetch_path:
             parent_path = self._fetch_parent_path(id)
         folder_data = {"parent": parent_data, "path": parent_path}
-        yield Message.Directory, folder_data
+        yield Message.Directory, "", folder_data
 
         folders = []
         # remove trailing slash to download as ZIP
@@ -85,7 +85,7 @@ class BhadooExtractor(BaseExtractor):
                 path = self._fetch_parent_path(file_id)
                 if path:
                     folder_data["path"] = path
-                    yield Message.Directory, folder_data
+                    yield Message.Directory, "", folder_data
             file.update(folder_data)
 
             yield Message.Url, url, file

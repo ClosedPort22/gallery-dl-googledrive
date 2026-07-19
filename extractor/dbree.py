@@ -27,7 +27,7 @@ class DbreeExtractor(Extractor):
         self._prepare_ddosguard_cookies()
 
         for file in self.files():
-            yield Message.Directory, file
+            yield Message.Directory, "", file
 
             response = self.request("{}/v/{}".format(self.root, file["id"]))
 
@@ -35,9 +35,9 @@ class DbreeExtractor(Extractor):
             text.nameext_from_url(
                 text.unescape(extr("<li>Name: ", "</li>")), file)
             file["filesize"] = extr("<li>Size: ", "</li>")
-            file["date"] = text.parse_datetime(
+            file["date"] = self.parse_datetime(
                 extr("<li>Created: ", "</li>"), "%Y-%m-%d %H:%M:%S")
-            file["last_download"] = text.parse_datetime(
+            file["last_download"] = self.parse_datetime(
                 extr("<li>Last Download: ", "</li>"), "%Y-%m-%d %H:%M:%S")
 
             url = "{}/d/{}".format(self.root, extr("'//dbree.org/d/", "'"))

@@ -21,13 +21,12 @@ class SwisstransferLinkExtractor(Extractor):
         Extractor.__init__(self, match)
         self.link_uuid = match.group(1)
 
-    @staticmethod
-    def prepare(file):
+    def prepare(self, file):
         """Adjust the content of a file object"""
         text.nameext_from_url(file.pop("fileName"), file)
         file["filesize"] = file.pop("fileSizeInBytes")
-        file["date"] = text.parse_datetime(file["createdDate"])
-        file["date_expired"] = text.parse_datetime(file["expiredDate"])
+        file["date"] = self.parse_datetime(file["createdDate"])
+        file["date_expired"] = self.parse_datetime(file["expiredDate"])
 
     def items(self):
         data = self.request(
@@ -37,7 +36,7 @@ class SwisstransferLinkExtractor(Extractor):
         download_host = data["downloadHost"]
         files = data["container"].pop("files")
 
-        yield Message.Directory, data
+        yield Message.Directory, "", data
 
         for file in files:
             self.prepare(file)

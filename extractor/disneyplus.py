@@ -36,7 +36,7 @@ class DisneyplusExtractor(Extractor):
 
     def images(self, obj):
         """Yield messages from a series or video object"""
-        yield Message.Directory, obj
+        yield Message.Directory, "", obj
 
         seen = self.seen
         for image in self._flatten_images(obj["image"]):
@@ -191,7 +191,7 @@ class DisneyplusProgramExtractor(DisneyplusExtractor):
                 for season in api.seasons(self.id):
                     # allow metadata files to be saved in the correct directory
                     season["text"] = series_data["text"]
-                    yield Message.Directory, season
+                    yield Message.Directory, "", season
 
                     if episodes:
                         for video in api.episodes(season["seasonId"]):

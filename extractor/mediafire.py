@@ -17,10 +17,9 @@ class MediafireExtractor(Extractor):
     archive_fmt = "{quickkey}"
     root = "https://www.mediafire.com"
 
-    @staticmethod
-    def prepare(file):
+    def prepare(self, file):
         """Adjust the content of a file or folder object"""
-        file["date"] = text.parse_datetime(
+        file["date"] = self.parse_datetime(
             file["created_utc"], "%Y-%m-%dT%H:%M:%S%z")
         if "filename" in file:
             text.nameext_from_url(file["filename"], file)
@@ -109,7 +108,7 @@ class MediafireFileExtractor(MediafireExtractor):
         url, data = self.url_data_from_id(self.id)
         data.update(self.metadata())
 
-        yield Message.Directory, data
+        yield Message.Directory, "", data
         try:
             native_url = data["links"]["normal_download"]
         except KeyError:
@@ -191,7 +190,7 @@ class MediafireFolderExtractor(MediafireExtractor):
             (parent_data.get("name") or parent_data["folderkey"],)
 
         folder_data = {"parent": parent_data, "path": path}
-        yield Message.Directory, folder_data
+        yield Message.Directory, "", folder_data
 
         for file in self.api.folder_content(id, "files"):
             self.prepare(file)

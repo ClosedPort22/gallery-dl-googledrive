@@ -52,5 +52,5 @@ class SendgbSendExtractor(Extractor):
 
         data["_http_validate"] = _validate
         url = "{}/upload/?utm_source={}".format(self.root, self.id)
-        yield Message.Directory, data
+        yield Message.Directory, "", data
         yield Message.Url, url, data

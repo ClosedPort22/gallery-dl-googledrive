@@ -95,12 +95,11 @@ class YandexdiskShareExtractor(Extractor):
             self.base_path = ()
             self.base = None
 
-    @staticmethod
-    def prepare(file):
+    def prepare(self, file):
         """Adjust the content of a file or folder object"""
-        file["date"] = text.parse_datetime(
+        file["date"] = self.parse_datetime(
             file["modified"], "%Y-%m-%dT%H:%M:%S%z")
-        file["date_created"] = text.parse_datetime(
+        file["date_created"] = self.parse_datetime(
             file["created"], "%Y-%m-%dT%H:%M:%S%z")
         if file["type"] == "file":
             text.nameext_from_url(file["name"], file)
@@ -179,7 +178,7 @@ class YandexdiskShareExtractor(Extractor):
         if parent_data["type"] == "file":
             del parent_data["total"]
             parent_data["path"] = ()  # overwrite "/"
-            yield Message.Directory, parent_data
+            yield Message.Directory, "", parent_data
             yield self.commit(parent_data)
             next(items, None)  # exhaust the generator
             return
@@ -187,7 +186,7 @@ class YandexdiskShareExtractor(Extractor):
         if self.base is None:
             self.base = (parent_data["name"],)
         folder_data = {"parent": parent_data, "path": self.base + parent_path}
-        yield Message.Directory, folder_data
+        yield Message.Directory, "", folder_data
 
         folders = []
         for item in items:

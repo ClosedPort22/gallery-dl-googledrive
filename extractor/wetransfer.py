@@ -65,7 +65,7 @@ class WetransferFileExtractor(Extractor):
         data["parent"] = metadata
 
         api_url = "{}/api/v4/transfers/{}/download".format(self.root, self.id)
-        yield Message.Directory, data
+        yield Message.Directory, "", data
 
         for item in items:
             self.prepare(item)

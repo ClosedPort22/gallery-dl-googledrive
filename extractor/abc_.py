@@ -76,11 +76,10 @@ class AbcListenEpisodeExtractor(AbcListenExtractor):
         AbcListenExtractor.__init__(self, match)
         self.webpage = "".join((self.root, match.group(1), match.group(2)))
 
-    @staticmethod
-    def prepare(data):
+    def prepare(self, data):
         dp = data["datelinePrepared"]
-        data["date"] = text.parse_datetime(dp["publishedDate"])
-        data["date_updated"] = text.parse_datetime(dp["updatedDate"])
+        data["date"] = self.parse_datetime(dp["publishedDate"])
+        data["date_updated"] = self.parse_datetime(dp["updatedDate"])
 
     def items(self):
         next_data = _next_data(
@@ -88,7 +87,7 @@ class AbcListenEpisodeExtractor(AbcListenExtractor):
         dp = next_data["props"]["pageProps"]["data"]["documentProps"]
         self.prepare(dp)
 
-        yield Message.Directory, dp
+        yield Message.Directory, "", dp
 
         if self.config("image", True):
             paths = (
@@ -180,7 +179,7 @@ class AbcListenProgramExtractor(AbcListenExtractor):
         if not image_url:
             return
 
-        yield Message.Directory, data
+        yield Message.Directory, "", data
 
         image_url = image_url.partition("?")[0]
         text.nameext_from_url(image_url, data)
@@ -243,13 +242,13 @@ class AbcIviewVideoExtractor(AbcIviewExtractor):
                 notfound="video").json()
 
         try:
-            response["date"] = text.parse_datetime(
+            response["date"] = self.parse_datetime(
                 response["pubDate"], "%Y-%m-%d %H:%M:%S")
         except KeyError:
             pass
         data = response.copy()
 
-        yield Message.Directory, response
+        yield Message.Directory, "", response
         # disable ytdl downloader to download images only
         if "_embedded" in response:
             # pacify formatters
@@ -308,7 +307,7 @@ class AbcIviewSeriesExtractor(AbcIviewExtractor):
             notfound="series").json()
 
         data = {"parent": response}
-        yield Message.Directory, data
+        yield Message.Directory, "", data
 
         url = response["thumbnail"]
         file = text.nameext_from_url(url)
@@ -361,7 +360,7 @@ class AbcIviewProgramExtractor(AbcIviewExtractor):
         pd = _initial_state(response.text)["route"]["pageData"]
         series_list = pd["_embedded"].pop("seriesList", None)
 
-        pd["date"] = text.parse_datetime(pd["updated"], "%Y-%m-%d %H:%M:%S")
+        pd["date"] = self.parse_datetime(pd["updated"], "%Y-%m-%d %H:%M:%S")
 
         data = {"parent": pd}
         if series_list:

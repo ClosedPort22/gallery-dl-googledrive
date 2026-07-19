@@ -4,7 +4,6 @@
 
 from gallery_dl.extractor.common import Extractor, Message
 from gallery_dl import text, exception
-from gallery_dl.cache import cache
 
 
 class DropboxShareExtractor(Extractor):
@@ -129,7 +128,7 @@ class DropboxShareExtractor(Extractor):
             },
             "path": (),
         }
-        yield Message.Directory, data
+        yield Message.Directory, "", data
         yield self.commit(self.url, data)
 
     def commit(self, url, data):
@@ -163,12 +162,11 @@ class DropboxShareExtractor(Extractor):
         return \
             Message.Url, self.root + "/sharing/fetch_user_content_link", data
 
-    @staticmethod
-    def prepare(file):
+    def prepare(self, file):
         """Adjust the content of a file object"""
         file["filesize"] = file.pop("bytes")
-        file["date"] = text.parse_timestamp(file["ts"])
-        text.nameext_from_url(file["filename"], file)
+        file["date"] = self.parse_timestamp(file["ts"])
+        self.nameext_from_url(file["filename"], file)
 
     def files(self, secure_hash, parent_path):
         """Recursively yield files in a folder"""
@@ -179,7 +177,7 @@ class DropboxShareExtractor(Extractor):
         if self.base is None:
             self.base = (parent_data["filename"],)
         folder_data = {"parent": parent_data, "path": self.base + parent_path}
-        yield Message.Directory, folder_data
+        yield Message.Directory, "", folder_data
 
         folders = []
         for item in items:
@@ -205,10 +203,10 @@ class DropboxWebAPI():
         self.cookiejar = extractor.session.cookies
         cookiedomain = extractor.cookiedomain
 
-        self.token = token = self._fetch_token()
+        self.token = token = self.cache(
+            self._fetch_token, _key=None, _exp=365*86400, _mem=False)
         self.cookiejar.set("t", token, domain=cookiedomain)
 
-    @cache(maxage=365*86400)
     def _fetch_token(self):
         self.request(self.API_ROOT, method="HEAD")
         return self.cookiejar["t"]
